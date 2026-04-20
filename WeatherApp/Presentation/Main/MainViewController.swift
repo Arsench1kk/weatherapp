@@ -2,122 +2,178 @@ import UIKit
 import SnapKit
 
 final class MainViewController: UIViewController {
-    
-    // MARK: - UI Elements
-    
-    private let cityLabel: UILabel = {
-        let label = UILabel()
-        label.applyStyle(.title1)
-        label.text = "Загрузка..."
-        label.textAlignment = .center
-        return label
+
+    // MARK: - UI
+
+    private let gradientView = UIView()
+
+    private let scrollView: UIScrollView = {
+        let sv = UIScrollView()
+        sv.showsVerticalScrollIndicator = false
+        sv.contentInsetAdjustmentBehavior = .never
+        return sv
     }()
-    
-    private let temperatureLabel: UILabel = {
-        let label = UILabel()
-        label.applyStyle(.largeTitle)
-        label.textAlignment = .center
-        return label
+
+    private let contentView = UIView()
+
+    private lazy var refreshControl: UIRefreshControl = {
+        let rc = UIRefreshControl()
+        rc.tintColor = .white.withAlphaComponent(0.8)
+        rc.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
+        return rc
     }()
-    
-    private let conditionLabel: UILabel = {
-        let label = UILabel()
-        label.applyStyle(.callout)
-        label.textAlignment = .center
-        return label
-    }()
-    
-    private let activityIndicator: UIActivityIndicatorView = {
-        let indicator = UIActivityIndicatorView(style: .large)
-        indicator.hidesWhenStopped = true
-        return indicator
-    }()
-    
+
+    // Секции
+    private let headerView  = WeatherHeaderView()
+    private let summaryCard = WeatherSummaryCard()
+    private let hourlyView  = HourlyForecastView()
+    private let dailyView   = DailyForecastView()
+
+    // Состояния
+    private let loadingView = WeatherLoadingView()
+    private let errorView   = WeatherErrorView()
+
     // MARK: - ViewModel
-    
+
     private let viewModel: MainViewModel
-    
+
     // MARK: - Init
-    
+
     init(viewModel: MainViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     // MARK: - Lifecycle
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         bindViewModel()
         viewModel.viewDidLoad()
     }
-    
+
+    // viewDidLayoutSubviews — вызывается каждый раз при изменении размеров
+    // Именно здесь обновляем frame градиента
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateGradientFrame()
+    }
+
     // MARK: - Setup
-    
+
     private func setupUI() {
-        view.backgroundColor = AppColors.backgroundPrimary
-        
-        [cityLabel, temperatureLabel, conditionLabel, activityIndicator].forEach {
-            view.addSubview($0)
+        // gradientView занимает весь экран
+        view.addSubview(gradientView)
+        gradientView.snp.makeConstraints { $0.edges.equalToSuperview() }
+
+        // scrollView внутри gradientView
+        gradientView.addSubview(scrollView)
+        scrollView.snp.makeConstraints { $0.edges.equalToSuperview() }
+        scrollView.refreshControl = refreshControl
+
+        // contentView внутри scrollView
+        // Ключевые constraints:
+        // edges → contentLayoutGuide  (определяет scrollable area)
+        // width → frameLayoutGuide    (фиксирует ширину = ширина экрана)
+        // Без width → frameLayoutGuide контент будет бесконечно широким и скролл сломается
+        scrollView.addSubview(contentView)
+        contentView.snp.makeConstraints { make in
+            make.edges.equalTo(scrollView.contentLayoutGuide)
+            make.width.equalTo(scrollView.frameLayoutGuide)
         }
-        
-        activityIndicator.snp.makeConstraints { make in
-            make.center.equalToSuperview()
+
+        // Секции внутри contentView — вертикально цепочкой
+        [headerView, summaryCard, hourlyView, dailyView].forEach {
+            contentView.addSubview($0)
         }
-        
-        cityLabel.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(80)
-            make.centerX.equalToSuperview()
+
+        headerView.snp.makeConstraints { make in
+            make.top.leading.trailing.equalToSuperview()
+        }
+
+        summaryCard.snp.makeConstraints { make in
+            make.top.equalTo(headerView.snp.bottom).offset(16)
             make.leading.trailing.equalToSuperview().inset(16)
         }
-        
-        temperatureLabel.snp.makeConstraints { make in
-            make.top.equalTo(cityLabel.snp.bottom).offset(8)
-            make.centerX.equalToSuperview()
+
+        hourlyView.snp.makeConstraints { make in
+            make.top.equalTo(summaryCard.snp.bottom).offset(8)
+            make.leading.trailing.equalToSuperview().inset(16)
+            make.height.equalTo(120)
         }
-        
-        conditionLabel.snp.makeConstraints { make in
-            make.top.equalTo(temperatureLabel.snp.bottom).offset(8)
-            make.centerX.equalToSuperview()
+
+        dailyView.snp.makeConstraints { make in
+            make.top.equalTo(hourlyView.snp.bottom).offset(8)
+            make.leading.trailing.equalToSuperview().inset(16)
+            make.bottom.equalToSuperview().inset(100)  // отступ снизу для home indicator
+        }
+
+        // Состояния поверх gradientView
+        [loadingView, errorView].forEach { gradientView.addSubview($0) }
+        loadingView.snp.makeConstraints { $0.edges.equalToSuperview() }
+        errorView.snp.makeConstraints   { $0.edges.equalToSuperview() }
+
+        errorView.onRetry = { [weak self] in
+            self?.viewModel.viewDidLoad()
         }
     }
-    
+
+    // MARK: - Gradient
+
+    private func updateGradientFrame() {
+        guard let gradientLayer = gradientView.layer.sublayers?.first(where: { $0 is CAGradientLayer }) else { return }
+        gradientLayer.frame = gradientView.bounds
+    }
+
+    // MARK: - Binding
+
     private func bindViewModel() {
-        viewModel.onLoadingStateChanged = { [weak self] isLoading in
-            if isLoading {
-                self?.activityIndicator.startAnimating()
-            } else {
-                self?.activityIndicator.stopAnimating()
-            }
-        }
-        
-        viewModel.onWeatherLoaded = { [weak self] weather in
-            self?.updateUI(with: weather)
-        }
-        
-        viewModel.onError = { [weak self] message in
-            self?.showError(message)
+        viewModel.onStateChanged = { [weak self] state in
+            self?.apply(state: state)
         }
     }
-    
-    private func updateUI(with weather: WeatherResponse) {
-        cityLabel.text = weather.name
-        temperatureLabel.text = "\(Int(weather.main.temp))°"
-        conditionLabel.text = weather.weather.first?.description.capitalized
+
+    private func apply(state: MainScreenState) {
+        switch state {
+        case .loading:
+            loadingView.isHidden = false
+            errorView.isHidden   = true
+            scrollView.isHidden  = true
+
+        case .loaded(let model):
+            loadingView.isHidden = true
+            errorView.isHidden   = true
+            scrollView.isHidden  = false
+            refreshControl.endRefreshing()
+            updateUI(with: model)
+
+        case .error(let message):
+            loadingView.isHidden = true
+            errorView.isHidden   = false
+            errorView.configure(with: message)
+            refreshControl.endRefreshing()
+        }
     }
-    
-    private func showError(_ message: String) {
-        let alert = UIAlertController(
-            title: "Ошибка",
-            message: message,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "ОК", style: .default))
-        present(alert, animated: true)
+
+    private func updateUI(with model: MainWeatherUIModel) {
+        let colors = GradientManager.colors(for: model.timeOfDay, isRaining: model.isRaining)
+        gradientView.applyGradient(colors: colors)
+        updateGradientFrame()
+
+        headerView.configure(with: model)
+        summaryCard.configure(with: model.conditionSummary)
+        hourlyView.configure(with: model.hourlyForecast)
+        dailyView.configure(with: model.dailyForecast)
+    }
+
+    // MARK: - Actions
+
+    @objc private func handleRefresh() {
+        viewModel.refresh()
     }
 }
