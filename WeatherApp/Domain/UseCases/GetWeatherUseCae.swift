@@ -1,18 +1,18 @@
-import CoreLocation
+import Foundation
 
 protocol GetWeatherUseCaseProtocol {
-    func execute(for location: CLLocation) async throws -> WeatherResponse
+    func execute(lat: Double, lon: Double) async throws -> WeatherResponse
 }
 
 final class GetWeatherUseCase: GetWeatherUseCaseProtocol {
-    
+
     private let repository: WeatherRepositoryProtocol
-    
+
     init(repository: WeatherRepositoryProtocol) {
         self.repository = repository
     }
-    
-    func execute(for location: CLLocation) async throws -> WeatherResponse {
-        try await repository.getWeather(for: location)
+
+    func execute(lat: Double, lon: Double) async throws -> WeatherResponse {
+        try await repository.fetchCurrentWeather(lat: lat, lon: lon)
     }
 }

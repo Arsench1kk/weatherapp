@@ -31,13 +31,20 @@ final class DIContainer {
     private func makeMainViewModel() -> MainViewModel {
         MainViewModel(
             getWeatherUseCase: makeGetWeatherUseCase(),
+            getForecastUseCase: makeGetForecastUseCase(),   // ← это было нужно добавить
             locationManager: locationManager
         )
     }
+
     
     // MARK: - ViewControllers (публичный интерфейс)
     
     func makeMainViewController() -> MainViewController {
         MainViewController(viewModel: makeMainViewModel())
     }
+    
+    private func makeGetForecastUseCase() -> GetForecastUseCaseProtocol {
+        GetForecastUseCase(repository: makeWeatherRepository())
+    }
+
 }
