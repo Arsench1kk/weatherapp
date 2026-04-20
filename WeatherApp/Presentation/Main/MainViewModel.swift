@@ -2,87 +2,87 @@ import Foundation
 import CoreLocation
 
 final class MainViewModel {
-    
-    // MARK: - Callbacks для ViewController
-    
-    var onWeatherLoaded: ((WeatherResponse) -> Void)?
-    var onError: ((String) -> Void)?
-    var onLoadingStateChanged: ((Bool) -> Void)?
-    
-    // MARK: - Private
-    
+
+    // MARK: - Callback для ViewController
+
+    var onStateChanged: ((MainScreenState) -> Void)?
+
+    // MARK: - Dependencies
+
     private let getWeatherUseCase: GetWeatherUseCaseProtocol
+    private let getForecastUseCase: GetForecastUseCaseProtocol
     private var locationManager: LocationManagerProtocol
-    
+
     // MARK: - Init
-    
+
     init(
         getWeatherUseCase: GetWeatherUseCaseProtocol,
+        getForecastUseCase: GetForecastUseCaseProtocol,
         locationManager: LocationManagerProtocol
     ) {
         self.getWeatherUseCase = getWeatherUseCase
+        self.getForecastUseCase = getForecastUseCase
         self.locationManager = locationManager
-        
-        setupLocationCallbacks()
     }
-    
-    // MARK: - Public
-    
+
+    // MARK: - Public Interface
+
     func viewDidLoad() {
-        locationManager.requestPermission()
+        fetchWeather()
     }
-    
+
+    func refresh() {
+        // Pull-to-refresh — не показываем .loading, данные уже есть
+        fetchWeather(showLoading: false)
+    }
+
     // MARK: - Private
-    
-    private func setupLocationCallbacks() {
+
+    private func fetchWeather(showLoading: Bool = true) {
+        if showLoading {
+            onStateChanged?(.loading)
+        }
+
+        locationManager.requestPermission()
+
         locationManager.onLocationUpdate = { [weak self] location in
-            self?.fetchWeather(for: location)
-        }
-        
-        locationManager.onError = { [weak self] error in
-            self?.onError?(error.localizedDescription ?? "Ошибка геолокации")
-        }
-    }
-    
-    private func fetchWeather(for location: CLLocation) {
-        onLoadingStateChanged?(true)
-        
-        Task { [weak self] in
             guard let self else { return }
-            
-            do {
-                let weather = try await self.getWeatherUseCase.execute(for: location)
-                
-                // Логируем в консоль (требование задания)
-                self.logWeatherData(weather)
-                
-                await MainActor.run {
-                    self.onLoadingStateChanged?(false)
-                    self.onWeatherLoaded?(weather)
-                }
-            } catch {
-                await MainActor.run {
-                    self.onLoadingStateChanged?(false)
-                    let message = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
-                    self.onError?(message)
+
+            Task { @MainActor in
+                do {
+                    // Запускаем оба запроса параллельно через async let
+                    async let current = self.getWeatherUseCase.execute(
+                        lat: location.coordinate.latitude,
+                        lon: location.coordinate.longitude
+                    )
+
+                    async let forecast = self.getForecastUseCase.execute(
+                        lat: location.coordinate.latitude,
+                        lon: location.coordinate.longitude
+                    )
+
+                    // Ждём оба результата
+                    let (currentResult, forecastResult) = try await (current, forecast)
+
+                    // Маппим в UI-модель
+                    let uiModel = WeatherMapper.map(
+                        current: currentResult,
+                        forecast: forecastResult
+                    )
+
+                    self.onStateChanged?(.loaded(uiModel))
+
+                } catch {
+                    let message = (error as? NetworkError)?.errorDescription
+                        ?? error.localizedDescription
+                    self.onStateChanged?(.error(message))
                 }
             }
         }
-    }
-    
-    private func logWeatherData(_ weather: WeatherResponse) {
-        print("╔══════════════════════════════════════╗")
-        print("║          WEATHER DATA LOADED         ║")
-        print("╠══════════════════════════════════════╣")
-        print("║ City:        \(weather.name)")
-        print("║ Temp:        \(Int(weather.main.temp))°C")
-        print("║ Feels like:  \(Int(weather.main.feelsLike))°C")
-        print("║ Min/Max:     \(Int(weather.main.tempMin))° / \(Int(weather.main.tempMax))°")
-        print("║ Condition:   \(weather.weather.first?.description ?? "—")")
-        print("║ Humidity:    \(weather.main.humidity)%")
-        print("║ Wind speed:  \(weather.wind.speed) m/s")
-        print("║ Pressure:    \(weather.main.pressure) hPa")
-        print("║ Coordinates: \(weather.coord.lat), \(weather.coord.lon)")
-        print("╚══════════════════════════════════════╝")
+
+        locationManager.onError = { [weak self] error in
+            let message = error.localizedDescription ?? "Ошибка геолокации"
+            self?.onStateChanged?(.error(message))
+        }
     }
 }
