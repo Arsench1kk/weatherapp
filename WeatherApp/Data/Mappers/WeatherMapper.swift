@@ -12,20 +12,20 @@ final class WeatherMapper {
         let isRaining = isCurrentlyRaining(current: current)
 
         return MainWeatherUIModel(
-            cityName: current.name,
+            cityName: current.name ?? "Неизвестно",
             temperature: "\(Int(current.main.temp))°",
-            description: (current.weather.first?.description ?? "").capitalized,
-            minMaxTemp: "Макс.: \(Int(current.main.tempMax))°, мин.: \(Int(current.main.tempMin))°",
-            feelsLike: "\(Int(current.main.feelsLike))°",
-            humidity: "\(current.main.humidity) %",
-            windSpeed: "\(Int(current.wind.speed * 3.6)) км/ч",
+            description: (current.weather?.first?.description ?? "Нет данных").capitalized,
+            minMaxTemp: "Макс.: \(Int(current.main.tempMax ?? current.main.temp))°, мин.: \(Int(current.main.tempMin ?? current.main.temp))°",
+            feelsLike: "\(Int(current.main.feelsLike ?? current.main.temp))°",
+            humidity: "\(current.main.humidity ?? 0) %",
+            windSpeed: "\(Int((current.wind?.speed ?? 0) * 3.6)) км/ч",
             windGust: "14 км/ч", // Gust нет в бесплатном API
-            windDirection: formatWindDirection(degrees: current.wind.deg),
-            pressure: "\(Int(Double(current.main.pressure) * 0.750064))",
+            windDirection: formatWindDirection(degrees: current.wind?.deg ?? 0),
+            pressure: "\(Int(Double(current.main.pressure ?? 1000) * 0.750064))",
             uvIndex: "0",           // UV нет в бесплатном API
             uvDescription: "Низкий",
-            sunrise: formatTime(current.sys.sunrise),
-            sunset: formatTime(current.sys.sunset),
+            sunrise: formatTime(current.sys?.sunrise ?? 0),
+            sunset: formatTime(current.sys?.sunset ?? 0),
             hourlyForecast: hourly,
             dailyForecast: daily,
             conditionSummary: buildSummary(current: current),
@@ -46,12 +46,12 @@ final class WeatherMapper {
         result.append(HourlyForecastUIModel(
             time: "Сейчас",
             temperature: "\(Int(current.main.temp))°",
-            symbolName: sfSymbol(for: current.weather.first?.icon ?? "01d"),
+            symbolName: sfSymbol(for: current.weather?.first?.icon ?? "01d"),
             isSpecial: false
         ))
 
         let nextItems = forecast.list.prefix(8) // 8 * 3ч = 24ч
-        let sunset = current.sys.sunset
+        let sunset = current.sys?.sunset ?? 0
         var sunsetInserted = false
 
         for item in nextItems {
@@ -69,7 +69,7 @@ final class WeatherMapper {
             result.append(HourlyForecastUIModel(
                 time: formatHour(item.dt),
                 temperature: "\(Int(item.main.temp))°",
-                symbolName: sfSymbol(for: item.weather.first?.icon ?? "01d"),
+                symbolName: sfSymbol(for: item.weather?.first?.icon ?? "01d"),
                 isSpecial: false
             ))
         }
@@ -102,7 +102,7 @@ final class WeatherMapper {
             let temps = items.map { $0.main.temp }
             let minTemp = Int(temps.min() ?? 0)
             let maxTemp = Int(temps.max() ?? 0)
-            let icon = items.first?.weather.first?.icon ?? "01d"
+            let icon = items.first?.weather?.first?.icon ?? "01d"
             dailyData.append((dayKey, minTemp, maxTemp, icon))
         }
 
@@ -161,13 +161,13 @@ final class WeatherMapper {
     }
 
     private static func buildSummary(current: WeatherResponse) -> String {
-        let desc = current.weather.first?.description ?? "переменная облачность"
-        let sunset = formatTime(current.sys.sunset)
+        let desc = current.weather?.first?.description ?? "переменная облачность"
+        let sunset = formatTime(current.sys?.sunset ?? 0)
         return "\(desc.capitalized) до конца дня. Закат в \(sunset)."
     }
 
     private static func isCurrentlyRaining(current: WeatherResponse) -> Bool {
-        let weatherId = current.weather.first?.id ?? 800
+        let weatherId = current.weather?.first?.id ?? 800
         return weatherId < 700 // Коды < 700 — осадки (дождь, снег, гроза)
     }
 
