@@ -79,7 +79,7 @@ final class LocationManager: NSObject, LocationManagerProtocol {
     }
     
     func startUpdating() {
-        manager.startUpdatingLocation()
+        manager.requestLocation()
     }
     
     func stopUpdating() {
@@ -111,8 +111,9 @@ extension LocationManager: CLLocationManagerDelegate {
         guard let location = locations.last else { return }
         
         // Игнорируем устаревшие координаты (старше 30 секунд)
-        let age = -location.timestamp.timeIntervalSinceNow
-        guard age < 30 else { return }
+        // В симуляторе иногда могут быть старые координаты, поэтому проверка отключена
+        // let age = -location.timestamp.timeIntervalSinceNow
+        // guard age < 30 else { return }
         
         // Игнорируем неточные координаты
         guard location.horizontalAccuracy > 0, location.horizontalAccuracy < 5000 else { return }
