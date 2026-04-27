@@ -67,7 +67,7 @@ enum NetworkError: Error, LocalizedError {
     
     static func map(_ urlError: URLError) -> NetworkError {
         switch urlError.code {
-        case .notConnectedToInternet, .networkConnectionLost where urlError.code == .notConnectedToInternet:
+        case .notConnectedToInternet:
             return .noInternetConnection
         case .timedOut:
             return .timeout

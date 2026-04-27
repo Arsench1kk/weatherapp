@@ -24,10 +24,17 @@ final class MainViewController: UIViewController {
     }()
 
     // Секции
-    private let headerView  = WeatherHeaderView()
-    private let summaryCard = WeatherSummaryCard()
-    private let hourlyView  = HourlyForecastView()
-    private let dailyView   = DailyForecastView()
+    private let headerView = WeatherHeaderView()
+    private let hourlySummaryCard = WeatherHourlySummaryCard()
+    private let dailyView = DailyForecastView()
+    private let detailsView = WeatherDetailsView()
+
+    private let contentStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = WeatherCardStyle.sectionSpacing
+        return stackView
+    }()
 
     // Состояния
     private let loadingView = WeatherLoadingView()
@@ -87,30 +94,19 @@ final class MainViewController: UIViewController {
             make.width.equalTo(scrollView.frameLayoutGuide)
         }
 
-        // Секции внутри contentView — вертикально цепочкой
-        [headerView, summaryCard, hourlyView, dailyView].forEach {
-            contentView.addSubview($0)
+        contentView.addSubview(contentStackView)
+        [headerView, hourlySummaryCard, dailyView, detailsView].forEach {
+            contentStackView.addArrangedSubview($0)
+        }
+
+        contentStackView.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(116)
+            make.leading.trailing.equalToSuperview().inset(18)
+            make.bottom.equalToSuperview().inset(48)
         }
 
         headerView.snp.makeConstraints { make in
-            make.top.leading.trailing.equalToSuperview()
-        }
-
-        summaryCard.snp.makeConstraints { make in
-            make.top.equalTo(headerView.snp.bottom).offset(16)
-            make.leading.trailing.equalToSuperview().inset(16)
-        }
-
-        hourlyView.snp.makeConstraints { make in
-            make.top.equalTo(summaryCard.snp.bottom).offset(8)
-            make.leading.trailing.equalToSuperview().inset(16)
-            make.height.equalTo(120)
-        }
-
-        dailyView.snp.makeConstraints { make in
-            make.top.equalTo(hourlyView.snp.bottom).offset(8)
-            make.leading.trailing.equalToSuperview().inset(16)
-            make.bottom.equalToSuperview().inset(100)  // отступ снизу для home indicator
+            make.height.equalTo(259)
         }
 
         // Состояния поверх gradientView
@@ -155,6 +151,7 @@ final class MainViewController: UIViewController {
         case .error(let message):
             loadingView.isHidden = true
             errorView.isHidden   = false
+            scrollView.isHidden  = true
             errorView.configure(with: message)
             refreshControl.endRefreshing()
         }
@@ -166,9 +163,9 @@ final class MainViewController: UIViewController {
         updateGradientFrame()
 
         headerView.configure(with: model)
-        summaryCard.configure(with: model.conditionSummary)
-        hourlyView.configure(with: model.hourlyForecast)
+        hourlySummaryCard.configure(summary: model.conditionSummary, items: model.hourlyForecast)
         dailyView.configure(with: model.dailyForecast)
+        detailsView.configure(with: model)
     }
 
     // MARK: - Actions

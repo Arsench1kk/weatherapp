@@ -21,11 +21,16 @@ final class WeatherMapper {
             windSpeed: "\(Int((current.wind?.speed ?? 0) * 3.6)) км/ч",
             windGust: "14 км/ч", // Gust нет в бесплатном API
             windDirection: formatWindDirection(degrees: current.wind?.deg ?? 0),
-            pressure: "\(Int(Double(current.main.pressure ?? 1000) * 0.750064))",
+            pressure: formatPressure(current.main.pressure ?? 1000),
             uvIndex: "0",           // UV нет в бесплатном API
             uvDescription: "Низкий",
             sunrise: formatTime(current.sys?.sunrise ?? 0),
             sunset: formatTime(current.sys?.sunset ?? 0),
+            dewPoint: formatDewPoint(
+                temperature: current.main.temp,
+                humidity: current.main.humidity ?? 0
+            ),
+            todayMaxTemperature: "\(Int(current.main.tempMax ?? current.main.temp))°",
             hourlyForecast: hourly,
             dailyForecast: daily,
             conditionSummary: buildSummary(current: current),
@@ -160,10 +165,22 @@ final class WeatherMapper {
         return "\(degrees)° \(directions[index])"
     }
 
+    private static func formatPressure(_ pressureHPa: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        formatter.locale = Locale(identifier: "ru_RU")
+        return formatter.string(from: NSNumber(value: pressureHPa)) ?? "\(pressureHPa)"
+    }
+
+    private static func formatDewPoint(temperature: Double, humidity: Int) -> String {
+        let dewPoint = temperature - ((100 - Double(humidity)) / 5)
+        return "\(Int(dewPoint.rounded()))°"
+    }
+
     private static func buildSummary(current: WeatherResponse) -> String {
         let desc = current.weather?.first?.description ?? "переменная облачность"
-        let sunset = formatTime(current.sys?.sunset ?? 0)
-        return "\(desc.capitalized) до конца дня. Закат в \(sunset)."
+        return "Порывы ветра до 14 км/ч. \(desc.capitalized) до конца дня."
     }
 
     private static func isCurrentlyRaining(current: WeatherResponse) -> Bool {

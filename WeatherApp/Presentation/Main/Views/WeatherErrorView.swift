@@ -29,7 +29,6 @@ final class WeatherErrorView: UIView {
         btn.backgroundColor = .white.withAlphaComponent(0.2)
         btn.layer.cornerRadius = 12
         btn.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
-        btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 24, bottom: 12, right: 24)
         btn.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
         return btn
     }()
@@ -45,6 +44,11 @@ final class WeatherErrorView: UIView {
         stack.snp.makeConstraints { make in
             make.center.equalToSuperview()
             make.leading.trailing.equalToSuperview().inset(32)
+        }
+
+        retryButton.snp.makeConstraints { make in
+            make.height.equalTo(48)
+            make.width.greaterThanOrEqualTo(140)
         }
     }
 

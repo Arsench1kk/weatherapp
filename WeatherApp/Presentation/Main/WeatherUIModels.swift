@@ -17,6 +17,8 @@ struct MainWeatherUIModel {
     let uvDescription: String   // "Низкий"
     let sunrise: String         // "06:41"
     let sunset: String          // "17:29"
+    let dewPoint: String        // "5°"
+    let todayMaxTemperature: String // "11°"
     let hourlyForecast: [HourlyForecastUIModel]
     let dailyForecast: [DailyForecastUIModel]
     let conditionSummary: String // Текст для погодного тезиса
