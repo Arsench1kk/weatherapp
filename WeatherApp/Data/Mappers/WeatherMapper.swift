@@ -2,7 +2,7 @@ import Foundation
 
 final class WeatherMapper {
 
-    static func map(response: OneCallResponse) -> MainWeatherUIModel {
+    static func map(response: OneCallResponse, locationName: String = "Текущее местоположение") -> MainWeatherUIModel {
         let current = response.current
         let hourly = mapHourly(hourly: response.hourly, timezoneOffset: response.timezoneOffset, currentSunset: current.sunset)
         let daily = mapDaily(daily: response.daily, timezoneOffset: response.timezoneOffset)
@@ -11,7 +11,7 @@ final class WeatherMapper {
         let feelsLike = current.feelsLike ?? current.temp
 
         return MainWeatherUIModel(
-            cityName: "Текущее местоположение", // One Call API не возвращает имя города, обычно используют reverse geocoding. Оставляем заглушку или можно передавать извне.
+            cityName: locationName,
             temperature: "\(Int(current.temp))°",
             description: sentenceCapitalized(current.weather?.first?.description ?? "Нет данных"),
             minMaxTemp: "Макс.: \(daily.first?.maxTemp ?? Int(current.temp))°, мин.: \(daily.first?.minTemp ?? Int(current.temp))°",
@@ -86,17 +86,15 @@ final class WeatherMapper {
     private static func mapDaily(daily: [DailyWeather], timezoneOffset: Int) -> [DailyForecastUIModel] {
         guard !daily.isEmpty else { return [] }
 
-        let globalMin = Int(daily.map { $0.temp.min }.min() ?? 0)
-        let globalMax = Int(daily.map { $0.temp.max }.max() ?? 0)
-
         return daily.enumerated().map { index, day in
             DailyForecastUIModel(
                 dayName: index == 0 ? "Сегодня" : formatDayName(day.dt, offset: timezoneOffset),
                 symbolName: sfSymbol(for: day.weather?.first?.icon ?? "01d"),
+                conditionDescription: sentenceCapitalized(day.weather?.first?.description ?? "нет данных"),
                 minTemp: Int(day.temp.min),
                 maxTemp: Int(day.temp.max),
-                globalMin: globalMin,
-                globalMax: globalMax
+                minTemperatureValue: day.temp.min,
+                maxTemperatureValue: day.temp.max
             )
         }
     }
