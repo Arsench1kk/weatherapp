@@ -15,7 +15,7 @@ final class WeatherDetailsView: UIView {
     private let windCard = WeatherWindCard()
     private let uvCard = WeatherUVIndexCard()
     private let sunsetCard = WeatherMetricCard(iconName: "sunset.fill", title: "ЗАКАТ")
-    private let humidityCard = WeatherMetricCard(iconName: "humidity.fill", title: "ВЛАЖНОСТЬ")
+    private let humidityCard = WeatherMetricCard(iconName: "drop.fill", title: "ВЛАЖНОСТЬ")
     private let pressureCard = WeatherPressureCard()
 
     override init(frame: CGRect) {
@@ -39,7 +39,7 @@ final class WeatherDetailsView: UIView {
         averageCard.configure(with: model)
         feelsLikeCard.configure(
             value: model.feelsLike,
-            detail: "По ощущениям теплее, чем на самом деле."
+            detail: model.feelsLikeDetail
         )
         windCard.configure(with: model)
         uvCard.configure(value: model.uvIndex, description: model.uvDescription)
@@ -90,17 +90,33 @@ private class WeatherBaseCard: UIView {
             make.edges.equalToSuperview().inset(WeatherCardStyle.contentInsets)
         }
 
-        contentStackView.addArrangedSubview(WeatherCardStyle.makeSectionTitle(iconName: iconName, title: title))
+        contentStackView.addArrangedSubview(makeSectionTitle(iconName: iconName, title: title))
         snp.makeConstraints { $0.height.greaterThanOrEqualTo(138) }
+    }
+    
+    private func makeSectionTitle(iconName: String, title: String) -> UIView {
+        let iconView = UIImageView()
+        iconView.image = UIImage(systemName: iconName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
+            .withRenderingMode(.alwaysOriginal)
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconSecondary]))
+        iconView.contentMode = .scaleAspectFit
+        iconView.snp.makeConstraints { $0.size.equalTo(14) }
+
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .medium), color: AppColors.textSecondary)
+        label.text = title
+
+        let stack = UIStackView(arrangedSubviews: [iconView, label])
+        stack.axis = .horizontal
+        stack.spacing = 4
+        stack.alignment = .center
+        return stack
     }
 }
 
 private final class WeatherMetricCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 32, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
         return label
@@ -109,9 +125,7 @@ private final class WeatherMetricCard: WeatherBaseCard {
     private let spacer = UIView()
 
     private let detailLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .regular)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
         label.numberOfLines = 0
         return label
     }()
@@ -136,18 +150,14 @@ private final class WeatherMetricCard: WeatherBaseCard {
 private final class WeatherAverageCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 32, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
         return label
     }()
 
     private let descriptionLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary)
         label.numberOfLines = 2
         return label
     }()
@@ -164,10 +174,10 @@ private final class WeatherAverageCard: WeatherBaseCard {
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(with model: MainWeatherUIModel) {
-        valueLabel.text = "На 10°"
-        descriptionLabel.text = "выше среднесуточного максимума"
+        valueLabel.text = model.todayMaxTemperature
+        descriptionLabel.text = "Сегодняшний максимум"
         todayLabel.configure(title: "Сегодня", value: "Макс.: \(model.todayMaxTemperature)")
-        averageLabel.configure(title: "В среднем", value: "Макс.: 1°")
+        averageLabel.configure(title: "Ощущается", value: model.feelsLike)
     }
 }
 
@@ -193,9 +203,9 @@ private final class WeatherWindCard: WeatherBaseCard {
     private func makeRowsStack() -> UIStackView {
         let stack = UIStackView(arrangedSubviews: [
             windRow,
-            WeatherCardStyle.makeSeparator(),
+            makePaddedSeparator(),
             gustRow,
-            WeatherCardStyle.makeSeparator(),
+            makePaddedSeparator(),
             directionRow
         ])
         stack.axis = .vertical
@@ -203,30 +213,35 @@ private final class WeatherWindCard: WeatherBaseCard {
         stack.alignment = .fill
         return stack
     }
+    
+    private func makePaddedSeparator() -> UIView {
+        let wrapper = UIView()
+        let sep = WeatherCardStyle.makeSeparator()
+        wrapper.addSubview(sep)
+        sep.snp.makeConstraints { make in
+            make.top.bottom.equalToSuperview()
+            make.leading.trailing.equalToSuperview().inset(16)
+        }
+        return wrapper
+    }
 }
 
 private final class WeatherUVIndexCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 32, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
         return label
     }()
 
     private let descriptionLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary)
         return label
     }()
 
     private let uvBar = WeatherUVBarView()
 
     private let detailLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .regular)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
         label.numberOfLines = 0
         label.text = "Останется низким до конца дня."
         return label
@@ -247,15 +262,27 @@ private final class WeatherUVIndexCard: WeatherBaseCard {
     func configure(value: String, description: String) {
         valueLabel.text = value
         descriptionLabel.text = description
+        let uvIndex = Double(value) ?? 0
+        detailLabel.text = makeDetailText(for: uvIndex)
+        uvBar.configure(index: uvIndex)
+    }
+
+    private func makeDetailText(for value: Double) -> String {
+        switch value {
+        case 0..<3:
+            return "Останется низким до конца дня."
+        case 3..<6:
+            return "Используйте солнцезащитный крем."
+        default:
+            return "Избегайте длительного пребывания на солнце."
+        }
     }
 }
 
 private final class WeatherPressureCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 32, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
         return label
@@ -265,15 +292,14 @@ private final class WeatherPressureCard: WeatherBaseCard {
 
     private let unitStack: UIStackView = {
         let iconView = UIImageView()
-        iconView.image = UIImage(systemName: "arrow.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .medium))
-        iconView.tintColor = WeatherCardStyle.primaryTextColor
+        iconView.image = UIImage(systemName: "arrow.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .medium))?
+            .withRenderingMode(.alwaysOriginal)
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconPrimary]))
         iconView.contentMode = .scaleAspectFit
         iconView.snp.makeConstraints { $0.size.equalTo(18) }
 
-        let label = UILabel()
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
         label.text = "гПа"
-        label.font = .systemFont(ofSize: 15, weight: .regular)
-        label.textColor = WeatherCardStyle.primaryTextColor
 
         let stack = UIStackView(arrangedSubviews: [iconView, label])
         stack.axis = .horizontal
@@ -283,7 +309,7 @@ private final class WeatherPressureCard: WeatherBaseCard {
     }()
 
     init() {
-        super.init(iconName: "gauge.with.dots.needle.33percent", title: "ДАВЛЕНИЕ")
+        super.init(iconName: "gauge", title: "ДАВЛЕНИЕ")
         contentStackView.addArrangedSubview(valueLabel)
         contentStackView.addArrangedSubview(spacer)
         contentStackView.addArrangedSubview(unitStack)
@@ -300,17 +326,12 @@ private final class WeatherPressureCard: WeatherBaseCard {
 private final class WeatherKeyValueRow: UIView {
 
     private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary)
         return label
     }()
 
     private let valueLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = WeatherCardStyle.secondaryTextColor
-        label.textAlignment = .right
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textSecondary, alignment: .right)
         return label
     }()
 
@@ -335,17 +356,12 @@ private final class WeatherKeyValueRow: UIView {
 private final class WeatherSmallMetricLabel: UIView {
 
     private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 10, weight: .medium)
-        label.textColor = WeatherCardStyle.titleColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 11, weight: .regular), color: AppColors.textSecondary)
         return label
     }()
 
     private let valueLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 10, weight: .bold)
-        label.textColor = .white
-        label.textAlignment = .right
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .bold), color: AppColors.textPrimary, alignment: .right)
         return label
     }()
 
@@ -370,21 +386,18 @@ private final class WeatherUVBarView: UIView {
 
     private let indicatorView: UIView = {
         let view = UIView()
-        view.backgroundColor = .white
+        view.backgroundColor = AppColors.weatherTemperatureMarker
         view.layer.cornerRadius = 2
         return view
     }()
+
+    private var uvIndex: Double = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         layer.cornerRadius = 2
         clipsToBounds = true
         addSubview(indicatorView)
-        indicatorView.snp.makeConstraints { make in
-            make.top.bottom.equalToSuperview()
-            make.leading.equalToSuperview()
-            make.width.equalTo(4)
-        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -392,6 +405,12 @@ private final class WeatherUVBarView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         applyGradient()
+        layoutIndicator()
+    }
+
+    func configure(index: Double) {
+        uvIndex = max(0, min(index, 11))
+        setNeedsLayout()
     }
 
     private func applyGradient() {
@@ -403,13 +422,14 @@ private final class WeatherUVBarView: UIView {
         gradient.frame = bounds
         gradient.startPoint = CGPoint(x: 0, y: 0.5)
         gradient.endPoint = CGPoint(x: 1, y: 0.5)
-        gradient.colors = [
-            UIColor(red: 104 / 255, green: 213 / 255, blue: 72 / 255, alpha: 1).cgColor,
-            UIColor(red: 236 / 255, green: 215 / 255, blue: 12 / 255, alpha: 1).cgColor,
-            UIColor(red: 250 / 255, green: 160 / 255, blue: 46 / 255, alpha: 1).cgColor,
-            UIColor(red: 251 / 255, green: 61 / 255, blue: 87 / 255, alpha: 1).cgColor,
-            UIColor(red: 215 / 255, green: 59 / 255, blue: 222 / 255, alpha: 1).cgColor
-        ]
+        gradient.colors = AppColors.weatherUVGradientColors.map { $0.cgColor }
         layer.insertSublayer(gradient, at: 0)
+    }
+
+    private func layoutIndicator() {
+        let indicatorWidth: CGFloat = 4
+        let availableWidth = max(bounds.width - indicatorWidth, 0)
+        let x = availableWidth * CGFloat(uvIndex / 11)
+        indicatorView.frame = CGRect(x: x, y: 0, width: indicatorWidth, height: bounds.height)
     }
 }

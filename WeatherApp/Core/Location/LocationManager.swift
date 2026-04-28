@@ -110,10 +110,10 @@ extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         
-        // Игнорируем устаревшие координаты (старше 30 секунд)
-        // В симуляторе иногда могут быть старые координаты, поэтому проверка отключена
-        // let age = -location.timestamp.timeIntervalSinceNow
-        // guard age < 30 else { return }
+        #if !targetEnvironment(simulator)
+        let age = -location.timestamp.timeIntervalSinceNow
+        guard age < 60 else { return }
+        #endif
         
         // Игнорируем неточные координаты
         guard location.horizontalAccuracy > 0, location.horizontalAccuracy < 5000 else { return }

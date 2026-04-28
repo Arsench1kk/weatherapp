@@ -1,37 +1,103 @@
 import UIKit
 
 enum AppColors {
-    
+
     // MARK: - Backgrounds
-    
+
     static var backgroundPrimary: UIColor {
-        UIColor(named: "BackgroundPrimary") ?? .white
+        asset("BackgroundPrimary")
     }
-    
+
     static var backgroundSecondary: UIColor {
-        UIColor(named: "BackgroundSecondary") ?? .systemBackground
+        asset("BackgroundSecondary")
     }
-    
+
     // MARK: - Text
-    
+
     static var textPrimary: UIColor {
-        UIColor(named: "TextPrimary") ?? .label
+        asset("WeatherTextPrimary")
     }
-    
+
     static var textSecondary: UIColor {
-        UIColor(named: "TextSecondary") ?? .secondaryLabel
+        asset("WeatherTextSecondary")
     }
-    
+
     // MARK: - Accent
-    
+
     static var accentBlue: UIColor {
-        UIColor(named: "AccentBlue") ?? .systemBlue
+        asset("AccentBlue")
     }
-    
+
     // MARK: - Weather specific
-    
+
     static var weatherCardBackground: UIColor {
-        UIColor(named: "WeatherCardBackground") ?? UIColor.white.withAlphaComponent(0.15)
+        asset("WeatherCardBackground")
+    }
+
+    static var weatherSeparator: UIColor {
+        asset("WeatherSeparator")
+    }
+
+    static var weatherIconPrimary: UIColor {
+        asset("WeatherIconPrimary")
+    }
+
+    static var weatherIconSecondary: UIColor {
+        asset("WeatherIconSecondary")
+    }
+
+    static var weatherTemperatureBarTrack: UIColor {
+        asset("WeatherTemperatureBarTrack")
+    }
+
+    static var weatherTemperatureBarStart: UIColor {
+        asset("WeatherTemperatureBarStart")
+    }
+
+    static var weatherTemperatureBarEnd: UIColor {
+        asset("WeatherTemperatureBarEnd")
+    }
+
+    static var weatherTemperatureMarker: UIColor {
+        asset("WeatherTemperatureMarker")
+    }
+
+    static var weatherTemperatureMarkerBorder: UIColor {
+        asset("WeatherTemperatureMarkerBorder")
+    }
+
+    static var weatherErrorButtonBackground: UIColor {
+        asset("WeatherErrorButtonBackground")
+    }
+
+    static var weatherSunIcon: UIColor {
+        asset("WeatherSunIcon")
+    }
+
+    static var weatherCloudIcon: UIColor {
+        asset("WeatherCloudIcon")
+    }
+
+    static var weatherPrecipitationIcon: UIColor {
+        asset("WeatherPrecipitationIcon")
+    }
+
+    static var weatherUVGradientColors: [UIColor] {
+        [
+            asset("WeatherUVLow"),
+            asset("WeatherUVModerate"),
+            asset("WeatherUVHigh"),
+            asset("WeatherUVVeryHigh"),
+            asset("WeatherUVExtreme")
+        ]
+    }
+
+    private static func asset(_ name: String) -> UIColor {
+        guard let color = UIColor(named: name) else {
+            assertionFailure("Missing color asset: \(name)")
+            return UIColor()
+        }
+        return color
     }
 }
 
@@ -39,35 +105,34 @@ extension AppColors {
 
     // MARK: - Утро: 6:00–12:00
     enum Morning {
-        static let top    = UIColor(named: "GradientMorningTop")
-        static let bottom = UIColor(named: "GradientMorningBottom")
+        static var top: UIColor { asset("GradientMorningTop") }
+        static var bottom: UIColor { asset("GradientMorningBottom") }
     }
 
     // MARK: - День: 12:00–18:00
     enum Day {
-        static let top    = UIColor(named: "GradientDayTop")
-        static let middle = UIColor(named: "GradientDayMiddle")
-        static let bottom = UIColor(named: "GradientDayBottom")
+        static var top: UIColor { asset("GradientDayTop") }
+        static var middle: UIColor { asset("GradientDayMiddle") }
+        static var bottom: UIColor { asset("GradientDayBottom") }
     }
 
     // MARK: - Вечер: 18:00–24:00
     enum Evening {
-        static let top    = UIColor(named: "GradientEveningTop")
-        static let bottom = UIColor(named: "GradientEveningBottom")
+        static var top: UIColor { asset("GradientEveningTop") }
+        static var bottom: UIColor { asset("GradientEveningBottom") }
     }
 
     // MARK: - Ночь: 0:00–6:00
     enum Night {
-        static let top    = UIColor(named: "GradientNightTop")
-        static let bottom = UIColor(named: "GradientNightBottom")
+        static var top: UIColor { asset("GradientNightTop") }
+        static var bottom: UIColor { asset("GradientNightBottom") }
     }
 
     // MARK: - Дождь
     enum Rain {
-        static let dayTop      = UIColor(named: "GradientRainDayTop")
-        static let dayBottom   = UIColor(named: "GradientRainDayBottom")
-        static let nightTop    = UIColor(named: "GradientRainNightTop")
-        static let nightBottom = UIColor(named: "GradientRainNightBottom")
+        static var dayTop: UIColor { asset("GradientRainDayTop") }
+        static var dayBottom: UIColor { asset("GradientRainDayBottom") }
+        static var nightTop: UIColor { asset("GradientRainNightTop") }
+        static var nightBottom: UIColor { asset("GradientRainNightBottom") }
     }
 }
-

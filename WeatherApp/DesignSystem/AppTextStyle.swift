@@ -2,34 +2,43 @@ import UIKit
 
 enum AppTextStyle {
     
-    // MARK: - Cases
+    static let currentTemp = UIFont.systemFont(ofSize: 96, weight: .thin)
+    static let locationName = UIFont.systemFont(ofSize: 28, weight: .regular)
+    static let condition = UIFont.systemFont(ofSize: 17, weight: .medium)
     
-    case largeTitle       // 96pt — большая температура
-    case title1           // 34pt — название города
-    case title2           // 28pt — заголовок секции
-    case title3           // 22pt — подзаголовок
-    case headline         // 17pt bold — акцентный текст
-    case body             // 17pt — основной текст
-    case callout          // 16pt — описание погоды
-    case subheadline      // 15pt — мелкие подписи
-    case footnote         // 13pt — сноски
-    case caption1         // 12pt — подписи к иконкам
-    case caption2         // 11pt — минимальный текст
+    static func label(style: UIFont, color: UIColor = AppColors.textPrimary, alignment: NSTextAlignment = .natural) -> UILabel {
+        let label = UILabel()
+        label.font = style
+        label.textColor = color
+        label.textAlignment = alignment
+        return label
+    }
     
-    // MARK: - Font
+    // Поддержка старых стилей для обратной совместимости, если где-то еще остались
+    case largeTitle
+    case title1
+    case title2
+    case title3
+    case headline
+    case body
+    case callout
+    case subheadline
+    case footnote
+    case caption1
+    case caption2
     
     var font: UIFont {
         switch self {
         case .largeTitle:
-            return UIFont.systemFont(ofSize: 96, weight: .thin)
+            return AppTextStyle.currentTemp
         case .title1:
-            return UIFont.systemFont(ofSize: 34, weight: .regular)
+            return AppTextStyle.locationName
         case .title2:
             return UIFont.systemFont(ofSize: 28, weight: .bold)
         case .title3:
             return UIFont.systemFont(ofSize: 22, weight: .semibold)
         case .headline:
-            return UIFont.systemFont(ofSize: 17, weight: .semibold)
+            return AppTextStyle.condition
         case .body:
             return UIFont.systemFont(ofSize: 17, weight: .regular)
         case .callout:
@@ -45,19 +54,10 @@ enum AppTextStyle {
         }
     }
     
-    // MARK: - Default Color
-    
     var defaultColor: UIColor {
-        switch self {
-        case .largeTitle, .title1, .title2, .title3, .headline:
-            return AppColors.textPrimary
-        default:
-            return AppColors.textSecondary
-        }
+        return AppColors.textPrimary
     }
 }
-
-// MARK: - UILabel Extension
 
 extension UILabel {
     func applyStyle(_ style: AppTextStyle, color: UIColor? = nil) {
@@ -65,4 +65,3 @@ extension UILabel {
         self.textColor = color ?? style.defaultColor
     }
 }
-

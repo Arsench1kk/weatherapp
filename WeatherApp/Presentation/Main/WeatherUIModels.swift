@@ -8,6 +8,7 @@ struct MainWeatherUIModel {
     let description: String     // "В основном солнечно"
     let minMaxTemp: String      // "Макс.: 11°, мин.: 5°"
     let feelsLike: String       // "12°"
+    let feelsLikeDetail: String // "По ощущениям теплее..."
     let humidity: String        // "70 %"
     let windSpeed: String       // "6 км/ч"
     let windGust: String        // "14 км/ч"
@@ -49,7 +50,7 @@ struct DailyForecastUIModel {
 
 // MARK: - Время суток (для градиента)
 
-enum TimeOfDay {
+enum TimeOfDay: Equatable {
     case morning    // 6:00 - 12:00
     case day        // 12:00 - 18:00
     case evening    // 18:00 - 24:00
@@ -57,6 +58,19 @@ enum TimeOfDay {
 
     static func current() -> TimeOfDay {
         let hour = Calendar.current.component(.hour, from: Date())
+        return make(from: hour)
+    }
+
+    static func fromTimezone(offset: Int, date: Date = Date()) -> TimeOfDay {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+
+        let localDate = Date(timeIntervalSince1970: date.timeIntervalSince1970 + TimeInterval(offset))
+        let hour = calendar.component(.hour, from: localDate)
+        return make(from: hour)
+    }
+
+    private static func make(from hour: Int) -> TimeOfDay {
         switch hour {
         case 6..<12: return .morning
         case 12..<18: return .day

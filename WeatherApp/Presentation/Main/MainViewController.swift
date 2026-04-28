@@ -5,8 +5,6 @@ final class MainViewController: UIViewController {
 
     // MARK: - UI
 
-    private let gradientView = UIView()
-
     private let scrollView: UIScrollView = {
         let sv = UIScrollView()
         sv.showsVerticalScrollIndicator = false
@@ -18,7 +16,7 @@ final class MainViewController: UIViewController {
 
     private lazy var refreshControl: UIRefreshControl = {
         let rc = UIRefreshControl()
-        rc.tintColor = .white.withAlphaComponent(0.8)
+        rc.tintColor = AppColors.textSecondary
         rc.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
         return rc
     }()
@@ -43,6 +41,12 @@ final class MainViewController: UIViewController {
     // MARK: - ViewModel
 
     private let viewModel: MainViewModel
+    
+    // MARK: - State
+    
+    private var gradientApplied = false
+    private var currentTimeOfDay: TimeOfDay = .current()
+    private var currentIsRaining = false
 
     // MARK: - Init
 
@@ -59,35 +63,41 @@ final class MainViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Удаляем любой фон
+        view.backgroundColor = .clear
+        
         setupUI()
         bindViewModel()
         viewModel.viewDidLoad()
     }
 
-    // viewDidLayoutSubviews — вызывается каждый раз при изменении размеров
-    // Именно здесь обновляем frame градиента
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        updateGradientFrame()
+        
+        if !gradientApplied {
+            GradientManager.shared.applyGradient(
+                to: view.layer,
+                timeOfDay: currentTimeOfDay,
+                isRaining: currentIsRaining
+            )
+            gradientApplied = true
+        } else {
+            view.layer.sublayers?
+                .first(where: { $0.name == GradientManager.gradientLayerName })?
+                .frame = view.bounds
+        }
     }
 
     // MARK: - Setup
 
     private func setupUI() {
-        // gradientView занимает весь экран
-        view.addSubview(gradientView)
-        gradientView.snp.makeConstraints { $0.edges.equalToSuperview() }
-
-        // scrollView внутри gradientView
-        gradientView.addSubview(scrollView)
+        // scrollView
+        view.addSubview(scrollView)
         scrollView.snp.makeConstraints { $0.edges.equalToSuperview() }
         scrollView.refreshControl = refreshControl
 
-        // contentView внутри scrollView
-        // Ключевые constraints:
-        // edges → contentLayoutGuide  (определяет scrollable area)
-        // width → frameLayoutGuide    (фиксирует ширину = ширина экрана)
-        // Без width → frameLayoutGuide контент будет бесконечно широким и скролл сломается
+        // contentView
         scrollView.addSubview(contentView)
         contentView.snp.makeConstraints { make in
             make.edges.equalTo(scrollView.contentLayoutGuide)
@@ -109,21 +119,14 @@ final class MainViewController: UIViewController {
             make.height.equalTo(259)
         }
 
-        // Состояния поверх gradientView
-        [loadingView, errorView].forEach { gradientView.addSubview($0) }
+        // Состояния поверх всего
+        [loadingView, errorView].forEach { view.addSubview($0) }
         loadingView.snp.makeConstraints { $0.edges.equalToSuperview() }
         errorView.snp.makeConstraints   { $0.edges.equalToSuperview() }
 
         errorView.onRetry = { [weak self] in
             self?.viewModel.viewDidLoad()
         }
-    }
-
-    // MARK: - Gradient
-
-    private func updateGradientFrame() {
-        guard let gradientLayer = gradientView.layer.sublayers?.first(where: { $0 is CAGradientLayer }) else { return }
-        gradientLayer.frame = gradientView.bounds
     }
 
     // MARK: - Binding
@@ -146,6 +149,9 @@ final class MainViewController: UIViewController {
             errorView.isHidden   = true
             scrollView.isHidden  = false
             refreshControl.endRefreshing()
+            
+            updateGradientIfNeeded(timeOfDay: model.timeOfDay, isRaining: model.isRaining)
+            
             updateUI(with: model)
 
         case .error(let message):
@@ -158,14 +164,19 @@ final class MainViewController: UIViewController {
     }
 
     private func updateUI(with model: MainWeatherUIModel) {
-        let colors = GradientManager.colors(for: model.timeOfDay, isRaining: model.isRaining)
-        gradientView.applyGradient(colors: colors)
-        updateGradientFrame()
-
         headerView.configure(with: model)
         hourlySummaryCard.configure(summary: model.conditionSummary, items: model.hourlyForecast)
         dailyView.configure(with: model.dailyForecast)
         detailsView.configure(with: model)
+    }
+
+    private func updateGradientIfNeeded(timeOfDay: TimeOfDay, isRaining: Bool) {
+        guard timeOfDay != currentTimeOfDay || isRaining != currentIsRaining else { return }
+
+        currentTimeOfDay = timeOfDay
+        currentIsRaining = isRaining
+        gradientApplied = false
+        view.setNeedsLayout()
     }
 
     // MARK: - Actions
