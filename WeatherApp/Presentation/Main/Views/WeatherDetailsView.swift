@@ -6,7 +6,7 @@ final class WeatherDetailsView: UIView {
     private let stackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
-        stackView.spacing = 8
+        stackView.spacing = WeatherCardStyle.interItemSpacing
         return stackView
     }()
 
@@ -57,8 +57,14 @@ final class WeatherDetailsView: UIView {
     private func makeRow(_ first: UIView, _ second: UIView) -> UIStackView {
         let row = UIStackView(arrangedSubviews: [first, second])
         row.axis = .horizontal
-        row.spacing = 8
+        row.spacing = WeatherCardStyle.interItemSpacing
         row.distribution = .fillEqually
+        first.snp.makeConstraints { make in
+            make.height.equalTo(first.snp.width)
+        }
+        second.snp.makeConstraints { make in
+            make.height.equalTo(second.snp.width)
+        }
         return row
     }
 }
@@ -69,8 +75,8 @@ private class WeatherBaseCard: UIView {
     let contentStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
-        stackView.spacing = 8
-        stackView.alignment = .leading
+        stackView.spacing = 10
+        stackView.alignment = .fill
         return stackView
     }()
 
@@ -91,23 +97,26 @@ private class WeatherBaseCard: UIView {
         }
 
         contentStackView.addArrangedSubview(makeSectionTitle(iconName: iconName, title: title))
-        snp.makeConstraints { $0.height.greaterThanOrEqualTo(138) }
+        snp.makeConstraints { $0.height.greaterThanOrEqualTo(150) }
     }
     
     private func makeSectionTitle(iconName: String, title: String) -> UIView {
         let iconView = UIImageView()
         iconView.image = UIImage(systemName: iconName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
-            .withRenderingMode(.alwaysOriginal)
-            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconSecondary]))
+            .withRenderingMode(.alwaysTemplate)
+        iconView.tintColor = WeatherCardStyle.iconTintColor
         iconView.contentMode = .scaleAspectFit
         iconView.snp.makeConstraints { $0.size.equalTo(14) }
 
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .medium), color: AppColors.textSecondary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherCardTitle, color: WeatherCardStyle.titleColor)
         label.text = title
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.82
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let stack = UIStackView(arrangedSubviews: [iconView, label])
         stack.axis = .horizontal
-        stack.spacing = 4
+        stack.spacing = 6
         stack.alignment = .center
         return stack
     }
@@ -116,7 +125,7 @@ private class WeatherBaseCard: UIView {
 private final class WeatherMetricCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherMetricValue, color: AppColors.textPrimary)
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
         return label
@@ -125,7 +134,7 @@ private final class WeatherMetricCard: WeatherBaseCard {
     private let spacer = UIView()
 
     private let detailLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherCardBody, color: AppColors.textPrimary)
         label.numberOfLines = 0
         return label
     }()
@@ -150,25 +159,27 @@ private final class WeatherMetricCard: WeatherBaseCard {
 private final class WeatherAverageCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherMetricValue, color: AppColors.textPrimary)
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
         return label
     }()
 
     private let descriptionLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherCardBody, color: AppColors.textPrimary)
         label.numberOfLines = 2
         return label
     }()
 
+    private let spacer = UIView()
     private let todayLabel = WeatherSmallMetricLabel()
     private let averageLabel = WeatherSmallMetricLabel()
 
     init() {
         super.init(iconName: "chart.line.uptrend.xyaxis", title: "В СРЕДНЕМ")
-        [valueLabel, descriptionLabel, todayLabel, averageLabel].forEach { contentStackView.addArrangedSubview($0) }
+        [valueLabel, descriptionLabel, spacer, todayLabel, averageLabel].forEach { contentStackView.addArrangedSubview($0) }
         contentStackView.setCustomSpacing(0, after: valueLabel)
+        spacer.setContentHuggingPriority(.defaultLow, for: .vertical)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -177,6 +188,7 @@ private final class WeatherAverageCard: WeatherBaseCard {
         valueLabel.text = model.todayMaxTemperature
         descriptionLabel.text = "Сегодняшний максимум"
         todayLabel.configure(title: "Сегодня", value: "Макс.: \(model.todayMaxTemperature)")
+        // TODO: Replace this row with average deviation when the API/UI model exposes that value.
         averageLabel.configure(title: "Ощущается", value: model.feelsLike)
     }
 }
@@ -190,6 +202,9 @@ private final class WeatherWindCard: WeatherBaseCard {
     init() {
         super.init(iconName: "wind", title: "ВЕТЕР")
         contentStackView.addArrangedSubview(makeRowsStack())
+        snp.makeConstraints { make in
+            make.height.greaterThanOrEqualTo(178)
+        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -209,7 +224,7 @@ private final class WeatherWindCard: WeatherBaseCard {
             directionRow
         ])
         stack.axis = .vertical
-        stack.spacing = 6
+        stack.spacing = 10
         stack.alignment = .fill
         return stack
     }
@@ -220,8 +235,9 @@ private final class WeatherWindCard: WeatherBaseCard {
         wrapper.addSubview(sep)
         sep.snp.makeConstraints { make in
             make.top.bottom.equalToSuperview()
-            make.leading.trailing.equalToSuperview().inset(16)
+            make.leading.trailing.equalToSuperview()
         }
+        wrapper.snp.makeConstraints { $0.height.equalTo(1.0 / UIScreen.main.scale) }
         return wrapper
     }
 }
@@ -229,7 +245,7 @@ private final class WeatherWindCard: WeatherBaseCard {
 private final class WeatherUVIndexCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherMetricValue, color: AppColors.textPrimary)
         return label
     }()
 
@@ -241,7 +257,7 @@ private final class WeatherUVIndexCard: WeatherBaseCard {
     private let uvBar = WeatherUVBarView()
 
     private let detailLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherCardBody, color: AppColors.textPrimary)
         label.numberOfLines = 0
         label.text = "Останется низким до конца дня."
         return label
@@ -282,7 +298,7 @@ private final class WeatherUVIndexCard: WeatherBaseCard {
 private final class WeatherPressureCard: WeatherBaseCard {
 
     private let valueLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 28, weight: .bold), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: AppTextStyle.weatherMetricValue, color: AppColors.textPrimary)
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
         return label
@@ -293,17 +309,17 @@ private final class WeatherPressureCard: WeatherBaseCard {
     private let unitStack: UIStackView = {
         let iconView = UIImageView()
         iconView.image = UIImage(systemName: "arrow.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .medium))?
-            .withRenderingMode(.alwaysOriginal)
-            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconPrimary]))
+            .withRenderingMode(.alwaysTemplate)
+        iconView.tintColor = WeatherCardStyle.iconTintColor
         iconView.contentMode = .scaleAspectFit
-        iconView.snp.makeConstraints { $0.size.equalTo(18) }
+        iconView.snp.makeConstraints { $0.size.equalTo(14) }
 
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: WeatherCardStyle.secondaryTextColor)
         label.text = "гПа"
 
         let stack = UIStackView(arrangedSubviews: [iconView, label])
         stack.axis = .horizontal
-        stack.spacing = 2
+        stack.spacing = 5
         stack.alignment = .center
         return stack
     }()
@@ -326,23 +342,27 @@ private final class WeatherPressureCard: WeatherBaseCard {
 private final class WeatherKeyValueRow: UIView {
 
     private let titleLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return label
     }()
 
     private let valueLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textSecondary, alignment: .right)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: WeatherCardStyle.secondaryTextColor, alignment: .right)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        let stack = UIStackView(arrangedSubviews: [titleLabel, valueLabel])
+        let spacer = UIView()
+        let stack = UIStackView(arrangedSubviews: [titleLabel, spacer, valueLabel])
         stack.axis = .horizontal
         stack.alignment = .center
-        stack.distribution = .equalSpacing
+        stack.spacing = 12
         addSubview(stack)
         stack.snp.makeConstraints { $0.edges.equalToSuperview() }
+        snp.makeConstraints { $0.height.equalTo(24) }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -356,22 +376,26 @@ private final class WeatherKeyValueRow: UIView {
 private final class WeatherSmallMetricLabel: UIView {
 
     private let titleLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 11, weight: .regular), color: AppColors.textSecondary)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .regular), color: WeatherCardStyle.secondaryTextColor)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return label
     }()
 
     private let valueLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .bold), color: AppColors.textPrimary, alignment: .right)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 13, weight: .regular), color: AppColors.textPrimary, alignment: .right)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        let stack = UIStackView(arrangedSubviews: [titleLabel, valueLabel])
+        let spacer = UIView()
+        let stack = UIStackView(arrangedSubviews: [titleLabel, spacer, valueLabel])
         stack.axis = .horizontal
-        stack.distribution = .equalSpacing
+        stack.spacing = 8
         addSubview(stack)
         stack.snp.makeConstraints { $0.edges.equalToSuperview() }
+        snp.makeConstraints { $0.height.equalTo(18) }
     }
 
     required init?(coder: NSCoder) { fatalError() }

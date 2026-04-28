@@ -6,7 +6,7 @@ final class WeatherHourlySummaryCard: UIView {
     private let containerView = WeatherCardStyle.makeContainerView()
 
     private let summaryLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary)
         label.numberOfLines = 0
         return label
     }()
@@ -22,7 +22,8 @@ final class WeatherHourlySummaryCard: UIView {
         let stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.alignment = .center
-        stackView.distribution = .equalSpacing
+        stackView.distribution = .fill
+        stackView.spacing = 10
         return stackView
     }()
 
@@ -43,14 +44,14 @@ final class WeatherHourlySummaryCard: UIView {
             scrollView
         ])
         contentStack.axis = .vertical
-        contentStack.spacing = 12
+        contentStack.spacing = 14
         containerView.addSubview(contentStack)
 
         contentStack.snp.makeConstraints { make in
             make.edges.equalToSuperview().inset(WeatherCardStyle.contentInsets)
         }
 
-        scrollView.snp.makeConstraints { $0.height.equalTo(105) }
+        scrollView.snp.makeConstraints { $0.height.equalTo(118) }
         scrollView.addSubview(hourlyStackView)
         hourlyStackView.snp.makeConstraints { make in
             make.edges.equalTo(scrollView.contentLayoutGuide)
@@ -78,7 +79,7 @@ final class WeatherHourlySummaryCard: UIView {
 private final class WeatherHourlySummaryCell: UIView {
 
     private let timeLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary, alignment: .center)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 14, weight: .regular), color: AppColors.textPrimary, alignment: .center)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()
@@ -90,7 +91,7 @@ private final class WeatherHourlySummaryCell: UIView {
     }()
 
     private let temperatureLabel: UILabel = {
-        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary, alignment: .center)
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary, alignment: .center)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()
@@ -98,7 +99,7 @@ private final class WeatherHourlySummaryCell: UIView {
     private let stackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
-        stackView.spacing = 12
+        stackView.spacing = 16
         stackView.alignment = .center
         return stackView
     }()
@@ -109,10 +110,11 @@ private final class WeatherHourlySummaryCell: UIView {
         addSubview(stackView)
 
         stackView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+            make.top.bottom.equalToSuperview().inset(6)
+            make.leading.trailing.equalToSuperview()
         }
-        iconView.snp.makeConstraints { $0.size.equalTo(24) }
-        snp.makeConstraints { $0.width.greaterThanOrEqualTo(38) }
+        iconView.snp.makeConstraints { $0.size.equalTo(28) }
+        snp.makeConstraints { $0.width.equalTo(56) }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -121,8 +123,8 @@ private final class WeatherHourlySummaryCell: UIView {
         timeLabel.text = model.time
         temperatureLabel.text = model.isSpecial ? "Закат" : model.temperature
         temperatureLabel.font = model.isSpecial
-            ? UIFont.systemFont(ofSize: 11, weight: .regular)
-            : UIFont.systemFont(ofSize: 12, weight: .regular)
+            ? UIFont.systemFont(ofSize: 12, weight: .regular)
+            : UIFont.systemFont(ofSize: 16, weight: .regular)
 
         let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
         iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)?

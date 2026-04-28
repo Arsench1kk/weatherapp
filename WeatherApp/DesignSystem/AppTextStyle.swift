@@ -5,6 +5,9 @@ enum AppTextStyle {
     static let currentTemp = UIFont.systemFont(ofSize: 96, weight: .thin)
     static let locationName = UIFont.systemFont(ofSize: 28, weight: .regular)
     static let condition = UIFont.systemFont(ofSize: 17, weight: .medium)
+    static let weatherCardTitle = UIFont.systemFont(ofSize: 12, weight: .medium)
+    static let weatherMetricValue = UIFont.systemFont(ofSize: 32, weight: .regular)
+    static let weatherCardBody = UIFont.systemFont(ofSize: 14, weight: .regular)
     
     static func label(style: UIFont, color: UIColor = AppColors.textPrimary, alignment: NSTextAlignment = .natural) -> UILabel {
         let label = UILabel()
