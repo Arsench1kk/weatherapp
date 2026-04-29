@@ -36,15 +36,6 @@ extension Endpoint {
 
 enum Constants {
     static var apiKey: String {
-        guard
-            let value = Bundle.main.object(forInfoDictionaryKey: "OPENWEATHER_API_KEY") as? String,
-            !value.isEmpty,
-            !value.hasPrefix("$(")
-        else {
-            assertionFailure("Missing OPENWEATHER_API_KEY build setting")
-            return ""
-        }
-
-        return value
+        return "2fbe05798a0852f0d7bc68e4fc0b9ac1"
     }
 }

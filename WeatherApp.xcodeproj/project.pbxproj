@@ -11,7 +11,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1B2C3D4E5F60718293A4B5C /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+
 		04218EB62F8C95E20037A20B /* WeatherApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WeatherApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -52,7 +52,7 @@
 			isa = PBXGroup;
 			children = (
 				04218EB82F8C95E20037A20B /* WeatherApp */,
-				A1B2C3D4E5F60718293A4B5C /* Config.xcconfig */,
+
 				04218EB72F8C95E20037A20B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -151,7 +151,7 @@
 /* Begin XCBuildConfiguration section */
 		04218ECA2F8C95E30037A20B /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A1B2C3D4E5F60718293A4B5C /* Config.xcconfig */;
+
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -186,7 +186,7 @@
 		};
 		04218ECB2F8C95E30037A20B /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A1B2C3D4E5F60718293A4B5C /* Config.xcconfig */;
+
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

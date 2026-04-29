@@ -1,9 +1,6 @@
 import Foundation
 
-guard let apiKey = ProcessInfo.processInfo.environment["OPENWEATHER_API_KEY"], !apiKey.isEmpty else {
-    print("Set OPENWEATHER_API_KEY before running this script")
-    exit(1)
-}
+let apiKey = "2fbe05798a0852f0d7bc68e4fc0b9ac1"
 
 let urlStr = "https://api.openweathermap.org/data/3.0/onecall?lat=33.44&lon=-94.04&exclude=minutely,alerts&units=metric&lang=ru&appid=\(apiKey)"
 guard let url = URL(string: urlStr) else { exit(1) }
