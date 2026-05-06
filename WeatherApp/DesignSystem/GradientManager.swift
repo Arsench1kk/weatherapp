@@ -45,7 +45,7 @@ final class GradientManager {
         }
     }
 
-    private func colors(for timeOfDay: TimeOfDay, isRaining: Bool) -> [UIColor] {
+    func colors(for timeOfDay: TimeOfDay, isRaining: Bool) -> [UIColor] {
         switch timeOfDay {
         case .morning:
             return isRaining ? [
