@@ -55,17 +55,17 @@ final class WeatherDetailsView: UIView {
     }
 
     private func makeRow(_ first: UIView, _ second: UIView) -> UIStackView {
-        let row = UIStackView(arrangedSubviews: [first, second])
-        row.axis = .horizontal
-        row.spacing = WeatherCardStyle.interItemSpacing
-        row.distribution = .fillEqually
+        let rowStackView = UIStackView(arrangedSubviews: [first, second])
+        rowStackView.axis = .horizontal
+        rowStackView.spacing = WeatherCardStyle.interItemSpacing
+        rowStackView.distribution = .fillEqually
         first.snp.makeConstraints { make in
             make.height.equalTo(first.snp.width)
         }
         second.snp.makeConstraints { make in
             make.height.equalTo(second.snp.width)
         }
-        return row
+        return rowStackView
     }
 }
 
@@ -114,11 +114,11 @@ private class WeatherBaseCard: UIView {
         label.minimumScaleFactor = 0.82
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let stack = UIStackView(arrangedSubviews: [iconView, label])
-        stack.axis = .horizontal
-        stack.spacing = 6
-        stack.alignment = .center
-        return stack
+        let titleStackView = UIStackView(arrangedSubviews: [iconView, label])
+        titleStackView.axis = .horizontal
+        titleStackView.spacing = 6
+        titleStackView.alignment = .center
+        return titleStackView
     }
 }
 
@@ -216,29 +216,29 @@ private final class WeatherWindCard: WeatherBaseCard {
     }
 
     private func makeRowsStack() -> UIStackView {
-        let stack = UIStackView(arrangedSubviews: [
+        let rowsStackView = UIStackView(arrangedSubviews: [
             windRow,
             makePaddedSeparator(),
             gustRow,
             makePaddedSeparator(),
             directionRow
         ])
-        stack.axis = .vertical
-        stack.spacing = 10
-        stack.alignment = .fill
-        return stack
+        rowsStackView.axis = .vertical
+        rowsStackView.spacing = 10
+        rowsStackView.alignment = .fill
+        return rowsStackView
     }
     
     private func makePaddedSeparator() -> UIView {
-        let wrapper = UIView()
-        let sep = WeatherCardStyle.makeSeparator()
-        wrapper.addSubview(sep)
-        sep.snp.makeConstraints { make in
+        let separatorWrapperView = UIView()
+        let separatorView = WeatherCardStyle.makeSeparator()
+        separatorWrapperView.addSubview(separatorView)
+        separatorView.snp.makeConstraints { make in
             make.top.bottom.equalToSuperview()
             make.leading.trailing.equalToSuperview()
         }
-        wrapper.snp.makeConstraints { $0.height.equalTo(1.0 / UIScreen.main.scale) }
-        return wrapper
+        separatorWrapperView.snp.makeConstraints { $0.height.equalTo(1.0 / UIScreen.main.scale) }
+        return separatorWrapperView
     }
 }
 
@@ -317,11 +317,11 @@ private final class WeatherPressureCard: WeatherBaseCard {
         let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: WeatherCardStyle.secondaryTextColor)
         label.text = "гПа"
 
-        let stack = UIStackView(arrangedSubviews: [iconView, label])
-        stack.axis = .horizontal
-        stack.spacing = 5
-        stack.alignment = .center
-        return stack
+        let unitStackView = UIStackView(arrangedSubviews: [iconView, label])
+        unitStackView.axis = .horizontal
+        unitStackView.spacing = 5
+        unitStackView.alignment = .center
+        return unitStackView
     }()
 
     init() {
@@ -356,12 +356,12 @@ private final class WeatherKeyValueRow: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         let spacer = UIView()
-        let stack = UIStackView(arrangedSubviews: [titleLabel, spacer, valueLabel])
-        stack.axis = .horizontal
-        stack.alignment = .center
-        stack.spacing = 12
-        addSubview(stack)
-        stack.snp.makeConstraints { $0.edges.equalToSuperview() }
+        let stackView = UIStackView(arrangedSubviews: [titleLabel, spacer, valueLabel])
+        stackView.axis = .horizontal
+        stackView.alignment = .center
+        stackView.spacing = 12
+        addSubview(stackView)
+        stackView.snp.makeConstraints { $0.edges.equalToSuperview() }
         snp.makeConstraints { $0.height.equalTo(24) }
     }
 
@@ -390,11 +390,11 @@ private final class WeatherSmallMetricLabel: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         let spacer = UIView()
-        let stack = UIStackView(arrangedSubviews: [titleLabel, spacer, valueLabel])
-        stack.axis = .horizontal
-        stack.spacing = 8
-        addSubview(stack)
-        stack.snp.makeConstraints { $0.edges.equalToSuperview() }
+        let stackView = UIStackView(arrangedSubviews: [titleLabel, spacer, valueLabel])
+        stackView.axis = .horizontal
+        stackView.spacing = 8
+        addSubview(stackView)
+        stackView.snp.makeConstraints { $0.edges.equalToSuperview() }
         snp.makeConstraints { $0.height.equalTo(18) }
     }
 

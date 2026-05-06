@@ -6,54 +6,54 @@ final class WeatherHeaderView: UIView {
     // MARK: - UI
 
     private let locationIconView: UIImageView = {
-        let iv = UIImageView()
-        iv.image = UIImage(systemName: "location.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
+        let imageView = UIImageView()
+        imageView.image = UIImage(systemName: "location.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
             .withRenderingMode(.alwaysTemplate)
-        iv.tintColor = WeatherCardStyle.iconTintColor
-        iv.contentMode = .scaleAspectFit
-        return iv
+        imageView.tintColor = WeatherCardStyle.iconTintColor
+        imageView.contentMode = .scaleAspectFit
+        return imageView
     }()
 
     private let locationLabel: UILabel = {
-        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .medium), color: WeatherCardStyle.titleColor, alignment: .center)
-        l.text = nil
-        return l
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .medium), color: WeatherCardStyle.titleColor, alignment: .center)
+        label.text = nil
+        return label
     }()
 
     private lazy var locationStackView: UIStackView = {
-        let sv = UIStackView(arrangedSubviews: [locationIconView, locationLabel])
-        sv.axis = .horizontal
-        sv.spacing = 2
-        sv.alignment = .center
-        return sv
+        let stackView = UIStackView(arrangedSubviews: [locationIconView, locationLabel])
+        stackView.axis = .horizontal
+        stackView.spacing = 2
+        stackView.alignment = .center
+        return stackView
     }()
 
     private let cityLabel: UILabel = {
-        let l = AppTextStyle.label(style: AppTextStyle.locationName, color: AppColors.textPrimary, alignment: .center)
-        l.adjustsFontSizeToFitWidth = true
-        l.minimumScaleFactor = 0.75
-        return l
+        let label = AppTextStyle.label(style: AppTextStyle.locationName, color: AppColors.textPrimary, alignment: .center)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.75
+        return label
     }()
 
     private let temperatureLabel: UILabel = {
-        let l = AppTextStyle.label(style: AppTextStyle.currentTemp, color: AppColors.textPrimary, alignment: .center)
-        l.adjustsFontSizeToFitWidth = true
-        l.minimumScaleFactor = 0.75
-        return l
+        let label = AppTextStyle.label(style: AppTextStyle.currentTemp, color: AppColors.textPrimary, alignment: .center)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.75
+        return label
     }()
 
     private let descriptionLabel: UILabel = {
-        let l = AppTextStyle.label(style: AppTextStyle.condition, color: AppColors.textPrimary, alignment: .center)
-        l.adjustsFontSizeToFitWidth = true
-        l.minimumScaleFactor = 0.75
-        return l
+        let label = AppTextStyle.label(style: AppTextStyle.condition, color: AppColors.textPrimary, alignment: .center)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.75
+        return label
     }()
 
     private let minMaxLabel: UILabel = {
-        let l = AppTextStyle.label(style: AppTextStyle.condition, color: AppColors.textSecondary, alignment: .center)
-        l.adjustsFontSizeToFitWidth = true
-        l.minimumScaleFactor = 0.75
-        return l
+        let label = AppTextStyle.label(style: AppTextStyle.condition, color: AppColors.textSecondary, alignment: .center)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.75
+        return label
     }()
 
     // MARK: - Init
