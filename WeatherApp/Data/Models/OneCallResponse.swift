@@ -101,3 +101,10 @@ struct FeelsLike: Decodable {
     let eve: Double
     let morn: Double
 }
+
+struct WeatherCondition: Decodable {
+    let id: Int
+    let main: String?
+    let description: String?
+    let icon: String?
+}
