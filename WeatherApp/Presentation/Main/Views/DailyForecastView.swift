@@ -2,14 +2,15 @@ import UIKit
 import SnapKit
 
 private enum DailyForecastLayout {
-    static let horizontalInset: CGFloat = 20
+    static let horizontalInset: CGFloat = 16
     static let headerVerticalInset: CGFloat = 14
     static let rowVerticalInset: CGFloat = 11
-    static let rowSpacing: CGFloat = 10
-    static let dayWidth: CGFloat = 78
-    static let iconSize: CGFloat = 26
-    static let temperatureWidth: CGFloat = 36
-    static let minimumBarWidth: CGFloat = 36
+    static let rowSpacing: CGFloat = 8
+    static let dayWidth: CGFloat = 64
+    static let minimumDayWidth: CGFloat = 48
+    static let iconSize: CGFloat = 24
+    static let temperatureWidth: CGFloat = 42
+    static let minimumBarWidth: CGFloat = 28
 }
 
 final class DailyForecastView: UIView {
@@ -123,6 +124,8 @@ private final class DailyForecastRow: UIView {
     private let minTempLabel: UILabel = {
         let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: WeatherCardStyle.secondaryTextColor)
         label.textAlignment = .right
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.78
         label.setContentHuggingPriority(.required, for: .horizontal)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
@@ -132,6 +135,8 @@ private final class DailyForecastRow: UIView {
 
     private let maxTempLabel: UILabel = {
         let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textPrimary)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.78
         label.setContentHuggingPriority(.required, for: .horizontal)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
@@ -165,7 +170,10 @@ private final class DailyForecastRow: UIView {
         rangeBarView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         rangeBarView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        dayLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.dayWidth) }
+        dayLabel.snp.makeConstraints { make in
+            make.width.equalTo(DailyForecastLayout.dayWidth).priority(.high)
+            make.width.greaterThanOrEqualTo(DailyForecastLayout.minimumDayWidth)
+        }
         iconView.snp.makeConstraints { $0.size.equalTo(DailyForecastLayout.iconSize) }
         minTempLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.temperatureWidth) }
         maxTempLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.temperatureWidth) }
@@ -177,8 +185,8 @@ private final class DailyForecastRow: UIView {
 
     func configure(with model: DailyForecastUIModel, startRatio: CGFloat, endRatio: CGFloat) {
         dayLabel.text    = model.dayName
-        minTempLabel.text = "\(model.minTemp)°"
-        maxTempLabel.text = "\(model.maxTemp)°"
+        minTempLabel.text = model.minTemperatureText
+        maxTempLabel.text = model.maxTemperatureText
         rangeBarView.configure(startRatio: startRatio, endRatio: endRatio)
 
         let config = UIImage.SymbolConfiguration(pointSize: 24, weight: .medium)
@@ -191,7 +199,7 @@ private final class DailyForecastRow: UIView {
             ]))
 
         isAccessibilityElement = true
-        accessibilityLabel = "\(model.dayName), \(model.conditionDescription), минимум \(model.minTemp) градусов, максимум \(model.maxTemp) градусов."
+        accessibilityLabel = "\(model.dayName), \(model.conditionDescription), минимум \(model.minTemperatureText), максимум \(model.maxTemperatureText)."
     }
 }
 
