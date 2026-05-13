@@ -60,10 +60,12 @@ final class WeatherDetailsView: UIView {
         rowStackView.spacing = WeatherCardStyle.interItemSpacing
         rowStackView.distribution = .fillEqually
         first.snp.makeConstraints { make in
-            make.height.equalTo(first.snp.width)
+            make.height.equalTo(first.snp.width).priority(.high)
+            make.height.greaterThanOrEqualTo(150)
         }
         second.snp.makeConstraints { make in
-            make.height.equalTo(second.snp.width)
+            make.height.equalTo(second.snp.width).priority(.high)
+            make.height.greaterThanOrEqualTo(150)
         }
         return rowStackView
     }

@@ -3,10 +3,10 @@ import SnapKit
 
 enum WeatherCardStyle {
 
-    static let cornerRadius: CGFloat = 24
-    static let sectionSpacing: CGFloat = 10
+    static let cornerRadius: CGFloat = 22
+    static let sectionSpacing: CGFloat = 8
     static let interItemSpacing: CGFloat = 10
-    static let contentInsets = UIEdgeInsets(top: 18, left: 20, bottom: 18, right: 20)
+    static let contentInsets = UIEdgeInsets(top: 16, left: 18, bottom: 16, right: 18)
     private static var currentTheme = WeatherCardTheme(timeOfDay: .current(), isRaining: false)
 
     static let primaryTextColor = AppColors.textPrimary
@@ -14,7 +14,7 @@ enum WeatherCardStyle {
     static let titleColor = AppColors.textPrimary.withAlphaComponent(0.55)
     static let iconTintColor = AppColors.textPrimary.withAlphaComponent(0.50)
 
-    static let separatorColor = AppColors.textPrimary.withAlphaComponent(0.14)
+    static let separatorColor = AppColors.textPrimary.withAlphaComponent(0.22)
 
     static func makeContainerView() -> UIView {
         let containerView = WeatherCardContainerView()
@@ -55,27 +55,27 @@ private struct WeatherCardTheme {
 
     var fallbackFillColor: UIColor {
         if isRaining {
-            return UIColor.black.withAlphaComponent(timeOfDay == .night ? 0.18 : 0.13)
+            return UIColor.black.withAlphaComponent(timeOfDay == .night ? 0.22 : 0.16)
         }
 
         switch timeOfDay {
         case .morning:
-            return UIColor.black.withAlphaComponent(0.10)
+            return UIColor.black.withAlphaComponent(0.13)
         case .day:
-            return UIColor.black.withAlphaComponent(0.08)
+            return UIColor.black.withAlphaComponent(0.11)
         case .evening:
-            return UIColor.black.withAlphaComponent(0.12)
+            return UIColor.black.withAlphaComponent(0.15)
         case .night:
-            return UIColor.black.withAlphaComponent(0.16)
+            return UIColor.black.withAlphaComponent(0.20)
         }
     }
 
     var borderColor: UIColor {
-        UIColor.white.withAlphaComponent(timeOfDay == .night ? 0.07 : 0.09)
+        UIColor.white.withAlphaComponent(timeOfDay == .night ? 0.10 : 0.13)
     }
 
     var separatorColor: UIColor {
-        UIColor.white.withAlphaComponent(0.16)
+        UIColor.white.withAlphaComponent(0.24)
     }
 }
 

@@ -7,8 +7,10 @@ final class CityWeatherCardCell: UITableViewCell {
 
     private let cardView: UIView = {
         let view = UIView()
-        view.layer.cornerRadius = 26
+        view.layer.cornerRadius = 24
         view.layer.cornerCurve = .continuous
+        view.layer.borderWidth = 1.0 / UIScreen.main.scale
+        view.layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
         view.layer.masksToBounds = true
         return view
     }()
@@ -24,28 +26,28 @@ final class CityWeatherCardCell: UITableViewCell {
     }()
 
     private let titleLabel = AppTextStyle.label(
-        style: .systemFont(ofSize: 27, weight: .bold),
+        style: .systemFont(ofSize: 25, weight: .semibold),
         color: AppColors.textPrimary
     )
 
     private let subtitleLabel = AppTextStyle.label(
-        style: .systemFont(ofSize: 17, weight: .semibold),
-        color: AppColors.textPrimary.withAlphaComponent(0.58)
+        style: .systemFont(ofSize: 16, weight: .semibold),
+        color: AppColors.textPrimary.withAlphaComponent(0.62)
     )
 
     private let temperatureLabel = AppTextStyle.label(
-        style: .systemFont(ofSize: 58, weight: .thin),
+        style: .systemFont(ofSize: 56, weight: .thin),
         color: AppColors.textPrimary,
         alignment: .right
     )
 
     private let conditionLabel = AppTextStyle.label(
-        style: .systemFont(ofSize: 17, weight: .semibold),
-        color: AppColors.textPrimary.withAlphaComponent(0.62)
+        style: .systemFont(ofSize: 16, weight: .semibold),
+        color: AppColors.textPrimary.withAlphaComponent(0.68)
     )
 
     private let highLowLabel = AppTextStyle.label(
-        style: .systemFont(ofSize: 17, weight: .bold),
+        style: .systemFont(ofSize: 16, weight: .semibold),
         color: AppColors.textPrimary,
         alignment: .right
     )
@@ -114,10 +116,20 @@ final class CityWeatherCardCell: UITableViewCell {
         backgroundColor = .clear
         contentView.backgroundColor = .clear
         selectionStyle = .none
+        titleLabel.lineBreakMode = .byTruncatingTail
+        subtitleLabel.lineBreakMode = .byTruncatingTail
+        conditionLabel.lineBreakMode = .byTruncatingTail
+        temperatureLabel.adjustsFontSizeToFitWidth = true
+        temperatureLabel.minimumScaleFactor = 0.68
+        highLowLabel.adjustsFontSizeToFitWidth = true
+        highLowLabel.minimumScaleFactor = 0.78
+        titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        subtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        conditionLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         contentView.addSubview(cardView)
         cardView.snp.makeConstraints { make in
-            make.top.bottom.equalToSuperview().inset(8)
+            make.top.bottom.equalToSuperview().inset(6)
             make.leading.trailing.equalToSuperview()
         }
 
@@ -134,6 +146,7 @@ final class CityWeatherCardCell: UITableViewCell {
         let leftStackView = UIStackView(arrangedSubviews: [titleLabel, subtitleStackView, UIView(), conditionLabel])
         leftStackView.axis = .vertical
         leftStackView.spacing = 4
+        leftStackView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let iconContainerView = UIView()
         iconContainerView.addSubview(weatherImageView)
@@ -152,6 +165,8 @@ final class CityWeatherCardCell: UITableViewCell {
         rightStackView.axis = .vertical
         rightStackView.spacing = 4
         rightStackView.alignment = .trailing
+        rightStackView.setContentHuggingPriority(.required, for: .horizontal)
+        rightStackView.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         [leftStackView, iconContainerView, rightStackView].forEach(cardView.addSubview)
 
@@ -160,21 +175,24 @@ final class CityWeatherCardCell: UITableViewCell {
         }
 
         leftStackView.snp.makeConstraints { make in
-            make.leading.equalToSuperview().offset(20)
-            make.top.bottom.equalToSuperview().inset(22)
+            make.leading.equalToSuperview().offset(18)
+            make.top.bottom.equalToSuperview().inset(20)
             make.trailing.lessThanOrEqualTo(rightStackView.snp.leading).offset(-14)
         }
 
         iconContainerView.snp.makeConstraints { make in
             make.leading.equalTo(leftStackView.snp.trailing).offset(10)
-            make.bottom.equalToSuperview().inset(20)
+            make.trailing.lessThanOrEqualTo(rightStackView.snp.leading).offset(-10)
+            make.bottom.equalToSuperview().inset(18)
             make.size.equalTo(32)
         }
 
         rightStackView.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().inset(20)
-            make.top.bottom.equalToSuperview().inset(18)
-            make.width.equalTo(138)
+            make.trailing.equalToSuperview().inset(18)
+            make.top.bottom.equalToSuperview().inset(16)
+            make.width.equalTo(116).priority(.high)
+            make.width.greaterThanOrEqualTo(92)
+            make.width.lessThanOrEqualTo(128)
         }
     }
 }
