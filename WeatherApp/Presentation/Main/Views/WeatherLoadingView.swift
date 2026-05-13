@@ -4,9 +4,9 @@ import SnapKit
 final class WeatherLoadingView: UIView {
 
     private let spinner: UIActivityIndicatorView = {
-        let ai = UIActivityIndicatorView(style: .large)
-        ai.color = AppColors.textPrimary
-        return ai
+        let activityIndicatorView = UIActivityIndicatorView(style: .large)
+        activityIndicatorView.color = AppColors.textPrimary
+        return activityIndicatorView
     }()
 
     override var isHidden: Bool {

@@ -4,22 +4,22 @@ import Foundation
 
 struct MainWeatherUIModel {
     let cityName: String        // "Алматы"
-    let temperature: String     // "11°"
+    let temperature: String     // Locale-aware temperature
     let description: String     // "В основном солнечно"
-    let minMaxTemp: String      // "Макс.: 11°, мин.: 5°"
-    let feelsLike: String       // "12°"
+    let minMaxTemp: String      // Locale-aware max/min summary
+    let feelsLike: String       // Locale-aware temperature
     let feelsLikeDetail: String // "По ощущениям теплее..."
     let humidity: String        // "70 %"
-    let windSpeed: String       // "6 км/ч"
-    let windGust: String        // "14 км/ч"
+    let windSpeed: String       // Locale-aware speed
+    let windGust: String        // Locale-aware speed
     let windDirection: String   // "38° СВ"
     let pressure: String        // "1 022"
     let uvIndex: String         // "0"
     let uvDescription: String   // "Низкий"
     let sunrise: String         // "06:41"
     let sunset: String          // "17:29"
-    let dewPoint: String        // "5°"
-    let todayMaxTemperature: String // "11°"
+    let dewPoint: String        // Locale-aware temperature
+    let todayMaxTemperature: String // Locale-aware temperature
     let hourlyForecast: [HourlyForecastUIModel]
     let dailyForecast: [DailyForecastUIModel]
     let conditionSummary: String // Текст для погодного тезиса
@@ -27,11 +27,20 @@ struct MainWeatherUIModel {
     let isRaining: Bool          // Для выбора фона
 }
 
+struct WeatherTheme: Equatable {
+    let timeOfDay: TimeOfDay
+    let isRaining: Bool
+
+    static var current: WeatherTheme {
+        WeatherTheme(timeOfDay: .current(), isRaining: false)
+    }
+}
+
 // MARK: - Почасовой прогноз
 
 struct HourlyForecastUIModel {
     let time: String        // "16", "17", "17:29" (для заката — "Закат")
-    let temperature: String // "11°"
+    let temperature: String // Locale-aware temperature
     let symbolName: String  // SF Symbol: "sun.max.fill", "moon.stars.fill"
     let isSpecial: Bool     // true для заката/восхода
 }
@@ -44,6 +53,8 @@ struct DailyForecastUIModel {
     let conditionDescription: String
     let minTemp: Int        // -2
     let maxTemp: Int        // 9
+    let minTemperatureText: String
+    let maxTemperatureText: String
     let minTemperatureValue: Double
     let maxTemperatureValue: Double
 }

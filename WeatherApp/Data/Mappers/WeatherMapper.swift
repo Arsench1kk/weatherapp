@@ -1,36 +1,155 @@
 import Foundation
 
+struct WeatherFormattingService {
+    private let locale: Locale
+
+    init(locale: Locale = .current) {
+        self.locale = locale
+    }
+
+    var nowLabel: String { "Сейчас" }
+    var todayLabel: String { "Сегодня" }
+    var sunsetLabel: String { "Закат" }
+
+    func temperature(_ celsius: Double) -> String {
+        let measurement = Measurement(value: celsius, unit: UnitTemperature.celsius)
+        return makeMeasurementFormatter().string(from: measurement)
+    }
+
+    func windSpeed(metersPerSecond: Double) -> String {
+        let measurement = Measurement(value: metersPerSecond * 3.6, unit: UnitSpeed.kilometersPerHour)
+        return makeMeasurementFormatter().string(from: measurement)
+    }
+
+    func percent(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = locale
+        formatter.numberStyle = .percent
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: Double(value) / 100)) ?? "\(value)%"
+    }
+
+    func integer(_ value: Double) -> String {
+        integer(Int(value.rounded()))
+    }
+
+    func integer(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = locale
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    func pressure(_ hectopascals: Int) -> String {
+        integer(hectopascals)
+    }
+
+    func time(timestamp: TimeInterval, timezoneOffset: Int) -> String {
+        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: Date(timeIntervalSince1970: timestamp))
+    }
+
+    func hourlyTime(timestamp: TimeInterval, timezoneOffset: Int) -> String {
+        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+        formatter.setLocalizedDateFormatFromTemplate("j")
+        return formatter.string(from: Date(timeIntervalSince1970: timestamp))
+    }
+
+    func dayName(timestamp: TimeInterval, timezoneOffset: Int) -> String {
+        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+        formatter.setLocalizedDateFormatFromTemplate("EEE")
+        return formatter.string(from: Date(timeIntervalSince1970: timestamp)).capitalized(with: locale)
+    }
+
+    func localTime(timezoneOffset: Int, date: Date = Date()) -> String {
+        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    func highLowText(highCelsius: Double, lowCelsius: Double) -> String {
+        "H:\(temperature(highCelsius))  L:\(temperature(lowCelsius))"
+    }
+
+    func maxMinText(maxCelsius: Double, minCelsius: Double) -> String {
+        "Макс.: \(temperature(maxCelsius)), мин.: \(temperature(minCelsius))"
+    }
+
+    func windDirection(degrees: Int) -> String {
+        let russianDirections = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"]
+        let englishDirections = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        let directions = locale.identifier.lowercased().hasPrefix("ru") ? russianDirections : englishDirections
+        let index = Int((Double(degrees) / 45.0).rounded()) % directions.count
+        return "\(degrees)° \(directions[index])"
+    }
+
+    private func makeMeasurementFormatter() -> MeasurementFormatter {
+        let formatter = MeasurementFormatter()
+        formatter.locale = locale
+        formatter.unitOptions = .naturalScale
+        formatter.unitStyle = .short
+
+        let numberFormatter = NumberFormatter()
+        numberFormatter.locale = locale
+        numberFormatter.numberStyle = .decimal
+        numberFormatter.maximumFractionDigits = 0
+        numberFormatter.minimumFractionDigits = 0
+        formatter.numberFormatter = numberFormatter
+
+        return formatter
+    }
+
+    private func makeDateFormatter(timezoneOffset: Int) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = TimeZone(secondsFromGMT: timezoneOffset) ?? .current
+        return formatter
+    }
+}
+
 final class WeatherMapper {
 
     static func map(response: OneCallResponse, locationName: String = "Текущее местоположение") -> MainWeatherUIModel {
+        let formatter = WeatherFormattingService()
         let current = response.current
-        let hourly = mapHourly(hourly: response.hourly, timezoneOffset: response.timezoneOffset, currentSunset: current.sunset)
-        let daily = mapDaily(daily: response.daily, timezoneOffset: response.timezoneOffset)
+        let hourly = mapHourly(
+            hourly: response.hourly,
+            timezoneOffset: response.timezoneOffset,
+            currentSunset: current.sunset,
+            formatter: formatter
+        )
+        let daily = mapDaily(daily: response.daily, timezoneOffset: response.timezoneOffset, formatter: formatter)
         let timeOfDay = TimeOfDay.fromTimezone(offset: response.timezoneOffset)
         let isRaining = isCurrentlyRaining(current: current)
         let feelsLike = current.feelsLike ?? current.temp
+        let todayHigh = response.daily.first?.temp.max ?? current.temp
+        let todayLow = response.daily.first?.temp.min ?? current.temp
 
         return MainWeatherUIModel(
             cityName: locationName,
-            temperature: "\(Int(current.temp))°",
+            temperature: formatter.temperature(current.temp),
             description: sentenceCapitalized(current.weather?.first?.description ?? "Нет данных"),
-            minMaxTemp: "Макс.: \(daily.first?.maxTemp ?? Int(current.temp))°, мин.: \(daily.first?.minTemp ?? Int(current.temp))°",
-            feelsLike: "\(Int(feelsLike))°",
+            minMaxTemp: formatter.maxMinText(maxCelsius: todayHigh, minCelsius: todayLow),
+            feelsLike: formatter.temperature(feelsLike),
             feelsLikeDetail: makeFeelsLikeDetail(actual: current.temp, feelsLike: feelsLike),
-            humidity: "\(current.humidity ?? 0) %",
-            windSpeed: "\(Int((current.windSpeed ?? 0) * 3.6)) км/ч",
-            windGust: current.windGust.map { "\(Int($0 * 3.6)) км/ч" } ?? "-",
-            windDirection: formatWindDirection(degrees: current.windDeg ?? 0),
-            pressure: current.pressure.map(formatPressure) ?? "-",
-            uvIndex: "\(Int(current.uvi ?? 0))",
+            humidity: formatter.percent(current.humidity ?? 0),
+            windSpeed: formatter.windSpeed(metersPerSecond: current.windSpeed ?? 0),
+            windGust: current.windGust.map { formatter.windSpeed(metersPerSecond: $0) } ?? "-",
+            windDirection: formatter.windDirection(degrees: current.windDeg ?? 0),
+            pressure: current.pressure.map(formatter.pressure) ?? "-",
+            uvIndex: formatter.integer(current.uvi ?? 0),
             uvDescription: getUvDescription(current.uvi ?? 0),
-            sunrise: formatTime(current.sunrise ?? 0, offset: response.timezoneOffset),
-            sunset: formatTime(current.sunset ?? 0, offset: response.timezoneOffset),
-            dewPoint: "\(Int(current.dewPoint ?? 0))°",
-            todayMaxTemperature: "\(daily.first?.maxTemp ?? Int(current.temp))°",
+            sunrise: current.sunrise.map { formatter.time(timestamp: $0, timezoneOffset: response.timezoneOffset) } ?? "-",
+            sunset: current.sunset.map { formatter.time(timestamp: $0, timezoneOffset: response.timezoneOffset) } ?? "-",
+            dewPoint: formatter.temperature(current.dewPoint ?? 0),
+            todayMaxTemperature: formatter.temperature(todayHigh),
             hourlyForecast: hourly,
             dailyForecast: daily,
-            conditionSummary: buildSummary(current: current),
+            conditionSummary: buildSummary(current: current, formatter: formatter),
             timeOfDay: timeOfDay,
             isRaining: isRaining
         )
@@ -41,7 +160,8 @@ final class WeatherMapper {
     private static func mapHourly(
         hourly: [HourlyWeather],
         timezoneOffset: Int,
-        currentSunset: TimeInterval?
+        currentSunset: TimeInterval?,
+        formatter: WeatherFormattingService
     ) -> [HourlyForecastUIModel] {
         var result: [HourlyForecastUIModel] = []
 
@@ -52,8 +172,8 @@ final class WeatherMapper {
         for (index, item) in nextItems.enumerated() {
             if index == 0 {
                 result.append(HourlyForecastUIModel(
-                    time: "Сейчас",
-                    temperature: "\(Int(item.temp))°",
+                    time: formatter.nowLabel,
+                    temperature: formatter.temperature(item.temp),
                     symbolName: sfSymbol(for: item.weather?.first?.icon ?? "01d"),
                     isSpecial: false
                 ))
@@ -62,8 +182,8 @@ final class WeatherMapper {
 
             if !sunsetInserted && sunset > 0 && item.dt > sunset {
                 result.append(HourlyForecastUIModel(
-                    time: formatTime(sunset, offset: timezoneOffset),
-                    temperature: "Закат",
+                    time: formatter.time(timestamp: sunset, timezoneOffset: timezoneOffset),
+                    temperature: formatter.sunsetLabel,
                     symbolName: "sunset.fill",
                     isSpecial: true
                 ))
@@ -71,8 +191,8 @@ final class WeatherMapper {
             }
 
             result.append(HourlyForecastUIModel(
-                time: formatHour(item.dt, offset: timezoneOffset),
-                temperature: "\(Int(item.temp))°",
+                time: formatter.hourlyTime(timestamp: item.dt, timezoneOffset: timezoneOffset),
+                temperature: formatter.temperature(item.temp),
                 symbolName: sfSymbol(for: item.weather?.first?.icon ?? "01d"),
                 isSpecial: false
             ))
@@ -83,77 +203,26 @@ final class WeatherMapper {
 
     // MARK: - Daily
 
-    private static func mapDaily(daily: [DailyWeather], timezoneOffset: Int) -> [DailyForecastUIModel] {
+    private static func mapDaily(
+        daily: [DailyWeather],
+        timezoneOffset: Int,
+        formatter: WeatherFormattingService
+    ) -> [DailyForecastUIModel] {
         guard !daily.isEmpty else { return [] }
 
         return daily.enumerated().map { index, day in
             DailyForecastUIModel(
-                dayName: index == 0 ? "Сегодня" : formatDayName(day.dt, offset: timezoneOffset),
+                dayName: index == 0 ? formatter.todayLabel : formatter.dayName(timestamp: day.dt, timezoneOffset: timezoneOffset),
                 symbolName: sfSymbol(for: day.weather?.first?.icon ?? "01d"),
                 conditionDescription: sentenceCapitalized(day.weather?.first?.description ?? "нет данных"),
                 minTemp: Int(day.temp.min),
                 maxTemp: Int(day.temp.max),
+                minTemperatureText: formatter.temperature(day.temp.min),
+                maxTemperatureText: formatter.temperature(day.temp.max),
                 minTemperatureValue: day.temp.min,
                 maxTemperatureValue: day.temp.max
             )
         }
-    }
-
-    // MARK: - Formatters
-
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter
-    }()
-
-    private static let hourFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH"
-        return formatter
-    }()
-
-    private static let dayNameFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = "EE"
-        return formatter
-    }()
-
-    private static let pressureFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = " "
-        formatter.locale = Locale(identifier: "ru_RU")
-        return formatter
-    }()
-
-    private static func formatTime(_ timestamp: TimeInterval, offset: Int) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        timeFormatter.timeZone = TimeZone(secondsFromGMT: offset) ?? .current
-        return timeFormatter.string(from: date)
-    }
-
-    private static func formatHour(_ timestamp: TimeInterval, offset: Int) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        hourFormatter.timeZone = TimeZone(secondsFromGMT: offset) ?? .current
-        return hourFormatter.string(from: date)
-    }
-
-    private static func formatDayName(_ timestamp: TimeInterval, offset: Int) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        dayNameFormatter.timeZone = TimeZone(secondsFromGMT: offset) ?? .current
-        return dayNameFormatter.string(from: date).capitalized
-    }
-
-    private static func formatWindDirection(degrees: Int) -> String {
-        let directions = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"]
-        let index = Int((Double(degrees) / 45.0).rounded()) % 8
-        return "\(degrees)° \(directions[index])"
-    }
-
-    private static func formatPressure(_ pressureHPa: Int) -> String {
-        pressureFormatter.string(from: NSNumber(value: pressureHPa)) ?? "\(pressureHPa)"
     }
 
     private static func getUvDescription(_ uvi: Double) -> String {
@@ -166,9 +235,9 @@ final class WeatherMapper {
         }
     }
 
-    private static func buildSummary(current: CurrentWeather) -> String {
+    private static func buildSummary(current: CurrentWeather, formatter: WeatherFormattingService) -> String {
         let desc = current.weather?.first?.description ?? "переменная облачность"
-        let gust = current.windGust.map { "Порывы ветра до \(Int($0 * 3.6)) км/ч. " } ?? ""
+        let gust = current.windGust.map { "Порывы ветра до \(formatter.windSpeed(metersPerSecond: $0)). " } ?? ""
         return "\(gust)\(sentenceCapitalized(desc)) до конца дня."
     }
 

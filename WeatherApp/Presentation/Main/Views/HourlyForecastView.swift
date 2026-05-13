@@ -6,18 +6,18 @@ final class HourlyForecastView: UIView {
     private let containerView = WeatherCardStyle.makeContainerView()
 
     private let scrollView: UIScrollView = {
-        let sv = UIScrollView()
-        sv.showsHorizontalScrollIndicator = false
-        sv.showsVerticalScrollIndicator = false
-        return sv
+        let scrollView = UIScrollView()
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        return scrollView
     }()
 
     private let stackView: UIStackView = {
-        let sv = UIStackView()
-        sv.axis = .horizontal
-        sv.spacing = 4
-        sv.alignment = .center
-        return sv
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 4
+        stackView.alignment = .center
+        return stackView
     }()
 
     override init(frame: CGRect) {
@@ -53,9 +53,9 @@ final class HourlyForecastView: UIView {
             stackView.addArrangedSubview(cell)
 
             if index < items.count - 1 {
-                let sep = WeatherCardStyle.makeSeparator()
-                sep.snp.makeConstraints { $0.width.equalTo(1) }
-                stackView.addArrangedSubview(sep)
+                let separatorView = WeatherCardStyle.makeSeparator()
+                separatorView.snp.makeConstraints { $0.width.equalTo(1) }
+                stackView.addArrangedSubview(separatorView)
             }
         }
     }
@@ -66,27 +66,27 @@ final class HourlyForecastView: UIView {
 private final class HourlyCell: UIView {
 
     private let timeLabel: UILabel = {
-        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary, alignment: .center)
-        return l
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary, alignment: .center)
+        return label
     }()
 
     private let iconView: UIImageView = {
-        let iv = UIImageView()
-        iv.contentMode = .scaleAspectFit
-        return iv
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        return imageView
     }()
 
     private let tempLabel: UILabel = {
-        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 17, weight: .semibold), color: AppColors.textPrimary, alignment: .center)
-        return l
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 17, weight: .semibold), color: AppColors.textPrimary, alignment: .center)
+        return label
     }()
 
     private let stack: UIStackView = {
-        let sv = UIStackView()
-        sv.axis = .vertical
-        sv.spacing = 6
-        sv.alignment = .center
-        return sv
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 6
+        stackView.alignment = .center
+        return stackView
     }()
 
     override init(frame: CGRect) {
