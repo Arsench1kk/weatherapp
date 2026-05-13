@@ -92,6 +92,16 @@ enum AppColors {
         ]
     }
 
+    // MARK: - City search
+
+    static var citySearchMoreButtonBackground: UIColor {
+        asset("CitySearchMoreButtonBackground")
+    }
+
+    static var citySearchMoreButtonBorder: UIColor {
+        asset("CitySearchMoreButtonBorder")
+    }
+
     private static func asset(_ name: String) -> UIColor {
         guard let color = UIColor(named: name) else {
             assertionFailure("Missing color asset: \(name)")
@@ -134,5 +144,24 @@ extension AppColors {
         static var dayBottom: UIColor { asset("GradientRainDayBottom") }
         static var nightTop: UIColor { asset("GradientRainNightTop") }
         static var nightBottom: UIColor { asset("GradientRainNightBottom") }
+    }
+}
+
+enum AppHaptics {
+    private static let lightImpactGenerator = UIImpactFeedbackGenerator(style: .light)
+    private static let deleteImpactGenerator = UIImpactFeedbackGenerator(style: .medium)
+
+    static func prepareLightImpact() {
+        lightImpactGenerator.prepare()
+    }
+
+    static func lightImpact() {
+        lightImpactGenerator.impactOccurred()
+        lightImpactGenerator.prepare()
+    }
+
+    static func deleteImpact() {
+        deleteImpactGenerator.impactOccurred()
+        deleteImpactGenerator.prepare()
     }
 }

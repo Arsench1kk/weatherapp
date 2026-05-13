@@ -4,29 +4,52 @@ import SnapKit
 final class CitySearchViewController: UIViewController {
 
     var onCitySelection: ((CitySelection) -> Void)?
+    var onClose: (() -> Void)?
 
     private enum Section: Int, CaseIterable {
         case savedCities
         case searchResults
     }
 
+    private enum SearchResultCellState {
+        case searching
+        case results([CitySearchSuggestionUIModel])
+        case noResults
+        case error(String)
+    }
+
+    private enum Layout {
+        static let horizontalInset: CGFloat = 16
+        static let headerHeight: CGFloat = 68
+        static let searchFieldHeight: CGFloat = 48
+        static let restingSearchBottomInset: CGFloat = 8
+        static let keyboardSearchGap: CGFloat = 10
+        static let tableBottomPadding: CGFloat = 28
+
+        static var restingTableBottomInset: CGFloat {
+            searchFieldHeight + restingSearchBottomInset + tableBottomPadding
+        }
+    }
+
     private let headerContainer = UIView()
     private let searchTextField = SearchTextField()
 
     private let titleLabel = AppTextStyle.label(
-        style: .systemFont(ofSize: 44, weight: .bold),
+        style: .systemFont(ofSize: 42, weight: .bold),
         color: AppColors.textPrimary
     )
 
-    private lazy var moreButton: UIButton = {
+    private lazy var closeButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "ellipsis"), for: .normal)
+        button.setImage(UIImage(systemName: "xmark"), for: .normal)
         button.tintColor = AppColors.textPrimary
-        button.backgroundColor = UIColor(red: 29 / 255, green: 32 / 255, blue: 56 / 255, alpha: 0.95)
-        button.layer.cornerRadius = 25
+        button.backgroundColor = AppColors.citySearchMoreButtonBackground
+        button.layer.cornerRadius = 24
         button.layer.cornerCurve = .continuous
         button.layer.borderWidth = 1.0
-        button.layer.borderColor = UIColor(red: 73 / 255, green: 80 / 255, blue: 130 / 255, alpha: 0.72).cgColor
+        button.layer.borderColor = AppColors.citySearchMoreButtonBorder.cgColor
+        button.accessibilityLabel = "Close"
+        button.addTarget(self, action: #selector(handleCloseTap), for: .touchUpInside)
         return button
     }()
 
@@ -36,7 +59,9 @@ final class CitySearchViewController: UIViewController {
         tableView.separatorStyle = .none
         tableView.showsVerticalScrollIndicator = false
         tableView.keyboardDismissMode = .interactive
-        tableView.contentInset = UIEdgeInsets(top: 18, left: 0, bottom: 96, right: 0)
+        let initialInsets = UIEdgeInsets(top: 10, left: 0, bottom: Layout.restingTableBottomInset, right: 0)
+        tableView.contentInset = initialInsets
+        tableView.verticalScrollIndicatorInsets = initialInsets
         return tableView
     }()
 
@@ -62,10 +87,6 @@ final class CitySearchViewController: UIViewController {
         setupKeyboardObservers()
         bindViewModel()
         viewModel.viewDidLoad()
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -102,43 +123,47 @@ final class CitySearchViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .clear
         titleLabel.text = "Weather"
+        titleLabel.adjustsFontSizeToFitWidth = true
+        titleLabel.minimumScaleFactor = 0.82
 
         view.addSubview(headerContainer)
         view.addSubview(tableView)
         view.addSubview(searchTextField)
 
         headerContainer.addSubview(titleLabel)
-        headerContainer.addSubview(moreButton)
+        headerContainer.addSubview(closeButton)
 
         headerContainer.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide)
             make.leading.trailing.equalToSuperview()
-            make.height.equalTo(72)
+            make.height.equalTo(Layout.headerHeight)
         }
 
         titleLabel.snp.makeConstraints { make in
-            make.leading.equalTo(headerContainer).offset(20)
-            make.trailing.lessThanOrEqualTo(moreButton.snp.leading).offset(-16)
+            make.leading.equalTo(headerContainer).offset(Layout.horizontalInset + 4)
+            make.trailing.lessThanOrEqualTo(closeButton.snp.leading).offset(-16)
             make.centerY.equalToSuperview()
         }
 
-        moreButton.snp.makeConstraints { make in
-            make.trailing.equalTo(headerContainer).inset(20)
+        closeButton.snp.makeConstraints { make in
+            make.trailing.equalTo(headerContainer).inset(Layout.horizontalInset + 4)
             make.centerY.equalTo(titleLabel)
-            make.size.equalTo(50)
+            make.size.equalTo(48)
         }
 
         tableView.snp.makeConstraints { make in
             make.top.equalTo(headerContainer.snp.bottom)
-            make.leading.trailing.equalToSuperview().inset(20)
+            make.leading.trailing.equalToSuperview().inset(Layout.horizontalInset)
             make.bottom.equalToSuperview()
         }
 
         searchTextField.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.leading.trailing.equalToSuperview().inset(20)
-            make.height.equalTo(50)
-            searchBottomConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide).inset(10).constraint
+            make.leading.trailing.equalToSuperview().inset(Layout.horizontalInset)
+            make.height.equalTo(Layout.searchFieldHeight)
+            searchBottomConstraint = make.bottom.equalTo(view.safeAreaLayoutGuide)
+                .inset(Layout.restingSearchBottomInset)
+                .constraint
         }
 
         tableView.dataSource = self
@@ -171,6 +196,10 @@ final class CitySearchViewController: UIViewController {
             self?.state = state
             self?.tableView.reloadData()
         }
+
+        viewModel.onCitySelected = { [weak self] selection in
+            self?.onCitySelection?(selection)
+        }
     }
 
     private func setupKeyboardObservers() {
@@ -193,20 +222,30 @@ final class CitySearchViewController: UIViewController {
         let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect ?? .zero
         let convertedKeyboardFrame = view.convert(keyboardFrame, from: nil)
         let overlap = view.bounds.intersection(convertedKeyboardFrame).height
-        let bottomInset = max(16, overlap - view.safeAreaInsets.bottom + 10)
+        let hasVisibleKeyboard = overlap > 0
+        let bottomInset = hasVisibleKeyboard
+            ? max(Layout.restingSearchBottomInset, overlap - view.safeAreaInsets.bottom + Layout.keyboardSearchGap)
+            : Layout.restingSearchBottomInset
 
         searchBottomConstraint?.update(inset: bottomInset)
+        updateFloatingSearchInsets(searchBottomInset: bottomInset)
 
         UIView.animate(withDuration: duration) {
             self.view.layoutIfNeeded()
         }
     }
 
+    private func updateFloatingSearchInsets(searchBottomInset: CGFloat) {
+        let tableBottomInset = Layout.searchFieldHeight + searchBottomInset + Layout.tableBottomPadding
+        tableView.contentInset.bottom = tableBottomInset
+        tableView.verticalScrollIndicatorInsets.bottom = tableBottomInset
+    }
+
     private func makeSectionHeader(title: String) -> UIView {
         let containerView = UIView()
         let titleLabel = AppTextStyle.label(
             style: .systemFont(ofSize: 13, weight: .semibold),
-            color: AppColors.textPrimary.withAlphaComponent(0.50)
+            color: AppColors.textPrimary.withAlphaComponent(0.56)
         )
         titleLabel.text = title.uppercased()
 
@@ -237,6 +276,11 @@ final class CitySearchViewController: UIViewController {
         }
 
         return containerView
+    }
+
+    @objc private func handleCloseTap() {
+        view.endEditing(true)
+        onClose?()
     }
 }
 
@@ -289,15 +333,34 @@ extension CitySearchViewController: UITableViewDataSource {
             return cell
 
         case .searchResults:
-            return makeSearchResultCell(tableView, indexPath: indexPath)
+            guard let cellState = makeSearchResultCellState() else {
+                return UITableViewCell()
+            }
+            return makeSearchResultCell(tableView, indexPath: indexPath, state: cellState)
+        }
+    }
+
+    private func makeSearchResultCellState() -> SearchResultCellState? {
+        switch state.resultsState {
+        case .emptyQuery:
+            return nil
+        case .searching:
+            return .searching
+        case .results(let suggestions):
+            return .results(suggestions)
+        case .noResults:
+            return .noResults
+        case .error(let message):
+            return .error(message)
         }
     }
 
     private func makeSearchResultCell(
         _ tableView: UITableView,
-        indexPath: IndexPath
+        indexPath: IndexPath,
+        state: SearchResultCellState
     ) -> UITableViewCell {
-        switch state.resultsState {
+        switch state {
         case .results(let suggestions):
             let cell = tableView.dequeueReusableCell(
                 withIdentifier: CitySearchResultCell.reuseIdentifier,
@@ -308,9 +371,6 @@ extension CitySearchViewController: UITableViewDataSource {
             }
             cell.configure(with: suggestions[indexPath.row])
             return cell
-
-        case .emptyQuery:
-            return makeMessageCell(message: "Введите название города", showsLoading: false)
 
         case .searching:
             return makeMessageCell(message: "Идёт поиск", showsLoading: true)
@@ -382,15 +442,11 @@ extension CitySearchViewController: UITableViewDelegate {
 
         switch section {
         case .savedCities:
-            guard let selection = viewModel.selectSavedCity(at: indexPath.row) else { return }
-            onCitySelection?(selection)
+            viewModel.selectSavedCity(at: indexPath.row)
 
         case .searchResults:
             guard case .results = state.resultsState else { return }
-            viewModel.selectSearchResult(at: indexPath.row) { [weak self] selection in
-                guard let selection else { return }
-                self?.onCitySelection?(selection)
-            }
+            viewModel.selectSearchResult(at: indexPath.row)
         }
     }
 
@@ -405,6 +461,7 @@ extension CitySearchViewController: UITableViewDelegate {
 
         let deleteAction = UIContextualAction(style: .destructive, title: "Удалить") { [weak self] _, _, completion in
             self?.viewModel.deleteCity(at: indexPath.row)
+            AppHaptics.deleteImpact()
             completion(true)
         }
         deleteAction.image = UIImage(systemName: "trash")

@@ -18,7 +18,7 @@ final class SearchTextField: UIView {
         textField.placeholder = "Search for a city or airport"
         textField.textColor = AppColors.textPrimary
         textField.tintColor = AppColors.textPrimary
-        textField.font = .systemFont(ofSize: 19, weight: .regular)
+        textField.font = .systemFont(ofSize: 18, weight: .regular)
         textField.autocorrectionType = .no
         textField.returnKeyType = .search
         textField.attributedPlaceholder = NSAttributedString(
@@ -38,13 +38,6 @@ final class SearchTextField: UIView {
         return button
     }()
 
-    private let microphoneImageView: UIImageView = {
-        let imageView = UIImageView(image: UIImage(systemName: "mic.fill"))
-        imageView.tintColor = AppColors.textPrimary.withAlphaComponent(0.9)
-        imageView.contentMode = .scaleAspectFit
-        return imageView
-    }()
-
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -60,18 +53,18 @@ final class SearchTextField: UIView {
 
     private func setupUI() {
         let containerView = UIView()
-        containerView.backgroundColor = UIColor(red: 28 / 255, green: 32 / 255, blue: 55 / 255, alpha: 0.92)
-        containerView.layer.cornerRadius = 25
+        containerView.backgroundColor = UIColor(red: 28 / 255, green: 32 / 255, blue: 55 / 255, alpha: 0.82)
+        containerView.layer.cornerRadius = 24
         containerView.layer.cornerCurve = .continuous
-        containerView.layer.borderWidth = 1.0
-        containerView.layer.borderColor = UIColor(red: 91 / 255, green: 101 / 255, blue: 159 / 255, alpha: 0.58).cgColor
+        containerView.layer.borderWidth = 1.0 / UIScreen.main.scale
+        containerView.layer.borderColor = UIColor(red: 91 / 255, green: 101 / 255, blue: 159 / 255, alpha: 0.50).cgColor
         addSubview(containerView)
         containerView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
-            make.height.equalTo(50)
+            make.height.equalTo(48)
         }
 
-        [searchImageView, textField, microphoneImageView, clearButton].forEach(containerView.addSubview)
+        [searchImageView, textField, clearButton].forEach(containerView.addSubview)
 
         searchImageView.snp.makeConstraints { make in
             make.leading.equalToSuperview().offset(18)
@@ -85,15 +78,9 @@ final class SearchTextField: UIView {
             make.size.equalTo(30)
         }
 
-        microphoneImageView.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().inset(18)
-            make.centerY.equalToSuperview()
-            make.size.equalTo(24)
-        }
-
         textField.snp.makeConstraints { make in
             make.leading.equalTo(searchImageView.snp.trailing).offset(14)
-            make.trailing.equalTo(microphoneImageView.snp.leading).offset(-12)
+            make.trailing.equalTo(clearButton.snp.leading).offset(-12)
             make.top.bottom.equalToSuperview()
         }
     }
@@ -101,14 +88,12 @@ final class SearchTextField: UIView {
     @objc private func handleTextChanged() {
         let text = textField.text ?? ""
         clearButton.isHidden = text.isEmpty
-        microphoneImageView.isHidden = !text.isEmpty
         onTextChanged?(text)
     }
 
     @objc private func handleClear() {
         textField.text = ""
         clearButton.isHidden = true
-        microphoneImageView.isHidden = false
         onClear?()
     }
 }
