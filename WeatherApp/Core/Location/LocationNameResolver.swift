@@ -22,7 +22,9 @@ final class ReverseGeocodingService: LocationNameResolving {
             let name = try await withThrowingTaskGroup(of: String?.self) { group in
                 group.addTask { [geocoder] in
                     let placemarks = try await geocoder.reverseGeocodeLocation(location)
-                    return placemarks.first?.displayName
+                    return await MainActor.run {
+                        placemarks.first.flatMap(Self.makeDisplayName(from:))
+                    }
                 }
 
                 group.addTask {
@@ -45,11 +47,10 @@ final class ReverseGeocodingService: LocationNameResolving {
             return nil
         }
     }
-}
 
-private extension CLPlacemark {
-    var displayName: String? {
-        [locality, subAdministrativeArea, administrativeArea, country]
+    @MainActor
+    private static func makeDisplayName(from placemark: CLPlacemark) -> String? {
+        [placemark.locality, placemark.subAdministrativeArea, placemark.administrativeArea, placemark.country]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
     }
