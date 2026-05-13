@@ -33,8 +33,16 @@ private enum DebugTimeOverride: Int, CaseIterable {
 
 final class MainViewController: UIViewController {
 
-    var onSearchTapped: (() -> Void)?
-    var onFavoriteSwitchTapped: (() -> Void)?
+    let locationSource: WeatherLocationSource
+
+    private enum Layout {
+        static let horizontalInset: CGFloat = 16
+        static let topContentOffset: CGFloat = 8
+        static let bottomContentClearance: CGFloat = 104
+        static let preferredHeaderHeight: CGFloat = 212
+        static let minimumHeaderHeight: CGFloat = 176
+        static let maximumHeaderHeightRatio: CGFloat = 0.24
+    }
 
     // MARK: - UI
 
@@ -87,8 +95,6 @@ final class MainViewController: UIViewController {
         label.isHidden = true
         return label
     }()
-
-    private let bottomControlsView = WeatherBottomControlsView()
 
     #if DEBUG_WEATHER_THEME_CONTROLS
     private lazy var debugTimeSegmentedControl: UISegmentedControl = {
@@ -158,6 +164,7 @@ final class MainViewController: UIViewController {
     private var currentTimeOfDay: TimeOfDay = .current()
     private var currentIsRaining = false
     private var hasLoadedContent = false
+    private var hasPlayedInitialSectionAnimation = false
     private var statusBannerHideWorkItem: DispatchWorkItem?
     #if DEBUG_WEATHER_THEME_CONTROLS
     private var latestLoadedModel: MainWeatherUIModel?
@@ -167,8 +174,9 @@ final class MainViewController: UIViewController {
 
     // MARK: - Init
 
-    init(viewModel: MainViewModel) {
+    init(viewModel: MainViewModel, source: WeatherLocationSource) {
         self.viewModel = viewModel
+        self.locationSource = source
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -201,10 +209,6 @@ final class MainViewController: UIViewController {
 
     func currentWeatherTheme() -> WeatherTheme {
         WeatherTheme(timeOfDay: currentTimeOfDay, isRaining: currentIsRaining)
-    }
-
-    func configureFavoritePager(isCurrentLocation: Bool) {
-        bottomControlsView.configurePager(isCurrentLocation: isCurrentLocation)
     }
 
     override func viewDidLayoutSubviews() {
@@ -248,28 +252,15 @@ final class MainViewController: UIViewController {
         }
 
         contentStackView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(12)
-            make.leading.trailing.equalToSuperview().inset(12)
-            make.bottom.equalToSuperview().inset(112)
+            make.top.equalToSuperview().offset(Layout.topContentOffset)
+            make.leading.trailing.equalToSuperview().inset(Layout.horizontalInset)
+            make.bottom.equalToSuperview().inset(Layout.bottomContentClearance)
         }
 
         headerView.snp.makeConstraints { make in
-            make.height.equalTo(238)
-        }
-
-        view.addSubview(bottomControlsView)
-        bottomControlsView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview()
-            make.bottom.equalToSuperview().inset(4)
-            make.height.equalTo(76)
-        }
-
-        bottomControlsView.onMapTap = { }
-        bottomControlsView.onPagerTap = { [weak self] in
-            self?.onFavoriteSwitchTapped?()
-        }
-        bottomControlsView.onListTap = { [weak self] in
-            self?.onSearchTapped?()
+            make.height.equalTo(Layout.preferredHeaderHeight).priority(.high)
+            make.height.greaterThanOrEqualTo(Layout.minimumHeaderHeight)
+            make.height.lessThanOrEqualTo(view.snp.height).multipliedBy(Layout.maximumHeaderHeightRatio).priority(.high)
         }
 
         // Состояния поверх всего
@@ -314,8 +305,12 @@ final class MainViewController: UIViewController {
             scrollView.isHidden  = true
 
         case .loaded(let model):
+            let shouldAnimateInitialSections = !hasPlayedInitialSectionAnimation
             loadingView.isHidden = true
             errorView.isHidden   = true
+            if shouldAnimateInitialSections {
+                prepareInitialSectionAnimation()
+            }
             scrollView.isHidden  = false
             hasLoadedContent = true
             #if DEBUG_WEATHER_THEME_CONTROLS
@@ -327,6 +322,10 @@ final class MainViewController: UIViewController {
             applyWeatherTheme(timeOfDay: theme.timeOfDay, isRaining: theme.isRaining)
             
             updateUI(with: model)
+            if shouldAnimateInitialSections {
+                hasPlayedInitialSectionAnimation = true
+                animateInitialSections()
+            }
 
         case .error(let message, let preservesContent):
             loadingView.isHidden = true
@@ -349,6 +348,34 @@ final class MainViewController: UIViewController {
         hourlySummaryCard.configure(summary: model.conditionSummary, items: model.hourlyForecast)
         dailyView.configure(with: model.dailyForecast)
         detailsView.configure(with: model)
+    }
+
+    private func prepareInitialSectionAnimation() {
+        contentStackView.arrangedSubviews.forEach { sectionView in
+            sectionView.alpha = 0
+            sectionView.transform = CGAffineTransform(translationX: 0, y: 26)
+        }
+    }
+
+    private func animateInitialSections() {
+        let sections = contentStackView.arrangedSubviews.reversed()
+        let delayStep: TimeInterval = 0.08
+
+        sections.enumerated().forEach { index, sectionView in
+            UIView.animate(
+                withDuration: 0.48,
+                delay: TimeInterval(index) * delayStep,
+                usingSpringWithDamping: 0.9,
+                initialSpringVelocity: 0.18,
+                options: [.curveEaseOut, .allowUserInteraction]
+            ) {
+                sectionView.alpha = 1
+                sectionView.transform = .identity
+            } completion: { _ in
+                sectionView.alpha = 1
+                sectionView.transform = .identity
+            }
+        }
     }
 
     private func applyWeatherTheme(timeOfDay: TimeOfDay, isRaining: Bool) {
@@ -384,10 +411,6 @@ final class MainViewController: UIViewController {
 
     @objc private func handleRefresh() {
         viewModel.refresh()
-    }
-
-    @objc private func handleSearchTap() {
-        onSearchTapped?()
     }
 
     private func showTransientStatus(_ message: String) {

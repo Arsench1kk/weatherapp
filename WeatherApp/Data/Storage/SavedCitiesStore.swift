@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let savedCitiesDidChange = Notification.Name("SavedCitiesStore.savedCitiesDidChange")
+}
+
 protocol SavedCitiesStoreProtocol {
     func loadCities() -> [SavedCity]
     func saveCities(_ cities: [SavedCity])
@@ -25,8 +29,8 @@ final class UserDefaultsSavedCitiesStore: SavedCitiesStoreProtocol {
     }
 
     func saveCities(_ cities: [SavedCity]) {
-        guard let data = try? JSONEncoder().encode(cities) else { return }
-        userDefaults.set(data, forKey: storageKey)
+        guard persistCities(cities) else { return }
+        notifySavedCitiesDidChange()
     }
 
     @discardableResult
@@ -37,13 +41,31 @@ final class UserDefaultsSavedCitiesStore: SavedCitiesStoreProtocol {
         }
 
         cities.append(city)
-        saveCities(cities)
+        guard persistCities(cities) else { return false }
+        notifySavedCitiesDidChange()
         return true
     }
 
     func removeCity(id: String) {
-        let cities = loadCities().filter { $0.id != id }
-        saveCities(cities)
+        var cities = loadCities()
+        let originalCount = cities.count
+        cities.removeAll { $0.id == id }
+        guard cities.count != originalCount,
+              persistCities(cities) else {
+            return
+        }
+
+        notifySavedCitiesDidChange()
+    }
+
+    private func persistCities(_ cities: [SavedCity]) -> Bool {
+        guard let data = try? JSONEncoder().encode(cities) else { return false }
+        userDefaults.set(data, forKey: storageKey)
+        return true
+    }
+
+    private func notifySavedCitiesDidChange() {
+        NotificationCenter.default.post(name: .savedCitiesDidChange, object: self)
     }
 
     private func isDuplicate(_ lhs: SavedCity, _ rhs: SavedCity) -> Bool {
@@ -64,4 +86,3 @@ final class UserDefaultsSavedCitiesStore: SavedCitiesStoreProtocol {
         Int((value * 1000).rounded())
     }
 }
-
