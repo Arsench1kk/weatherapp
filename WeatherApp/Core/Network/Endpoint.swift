@@ -29,6 +29,18 @@ extension Endpoint {
             ]
         )
     }
+    static func forecast(lat: Double, lon: Double) -> Endpoint {
+        Endpoint(
+            path: "/data/2.5/forecast",
+            queryItems: [
+                URLQueryItem(name: "lat", value: "\(lat)"),
+                URLQueryItem(name: "lon", value: "\(lon)"),
+                URLQueryItem(name: "appid", value: Constants.apiKey),
+                URLQueryItem(name: "units", value: "metric"),
+                URLQueryItem(name: "lang", value: "ru")
+            ]
+        )
+    }
 }
 
 // MARK: - Constants

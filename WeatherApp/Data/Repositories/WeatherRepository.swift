@@ -1,4 +1,4 @@
-import CoreLocation
+import Foundation
 
 final class WeatherRepository: WeatherRepositoryProtocol {
     
@@ -8,11 +8,13 @@ final class WeatherRepository: WeatherRepositoryProtocol {
         self.networkService = networkService
     }
     
-    func getWeather(for location: CLLocation) async throws -> WeatherResponse {
-        let endpoint = Endpoint.currentWeather(
-            lat: location.coordinate.latitude,
-            lon: location.coordinate.longitude
-        )
+    func fetchCurrentWeather(lat: Double, lon: Double) async throws -> WeatherResponse {
+        let endpoint = Endpoint.currentWeather(lat: lat, lon: lon)
+        return try await networkService.fetch(endpoint)
+    }
+    
+    func fetchForecast(lat: Double, lon: Double) async throws -> ForecastResponse {
+        let endpoint = Endpoint.forecast(lat: lat, lon: lon)
         return try await networkService.fetch(endpoint)
     }
 }

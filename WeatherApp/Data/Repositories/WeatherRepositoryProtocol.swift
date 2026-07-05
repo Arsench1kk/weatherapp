@@ -1,5 +1,6 @@
-import CoreLocation
+import Foundation
 
 protocol WeatherRepositoryProtocol {
-    func getWeather(for location: CLLocation) async throws -> WeatherResponse
+    func fetchCurrentWeather(lat: Double, lon: Double) async throws -> WeatherResponse
+    func fetchForecast(lat: Double, lon: Double) async throws -> ForecastResponse
 }
