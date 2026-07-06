@@ -35,3 +35,39 @@ enum AppColors {
     }
 }
 
+extension AppColors {
+
+    // MARK: - Утро: 6:00–12:00
+    enum Morning {
+        static let top    = UIColor(named: "GradientMorningTop")
+        static let bottom = UIColor(named: "GradientMorningBottom")
+    }
+
+    // MARK: - День: 12:00–18:00
+    enum Day {
+        static let top    = UIColor(named: "GradientDayTop")
+        static let middle = UIColor(named: "GradientDayMiddle")
+        static let bottom = UIColor(named: "GradientDayBottom")
+    }
+
+    // MARK: - Вечер: 18:00–24:00
+    enum Evening {
+        static let top    = UIColor(named: "GradientEveningTop")
+        static let bottom = UIColor(named: "GradientEveningBottom")
+    }
+
+    // MARK: - Ночь: 0:00–6:00
+    enum Night {
+        static let top    = UIColor(named: "GradientNightTop")
+        static let bottom = UIColor(named: "GradientNightBottom")
+    }
+
+    // MARK: - Дождь
+    enum Rain {
+        static let dayTop      = UIColor(named: "GradientRainDayTop")
+        static let dayBottom   = UIColor(named: "GradientRainDayBottom")
+        static let nightTop    = UIColor(named: "GradientRainNightTop")
+        static let nightBottom = UIColor(named: "GradientRainNightBottom")
+    }
+}
+

@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		04218ED02F8C9E390037A20B /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = 04218ECF2F8C9E390037A20B /* SnapKit */; };
-		04218ED22F8C9E390037A20B /* SnapKit-Dynamic in Frameworks */ = {isa = PBXBuildFile; productRef = 04218ED12F8C9E390037A20B /* SnapKit-Dynamic */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,7 +41,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				04218ED02F8C9E390037A20B /* SnapKit in Frameworks */,
-				04218ED22F8C9E390037A20B /* SnapKit-Dynamic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,7 +84,6 @@
 			name = WeatherApp;
 			packageProductDependencies = (
 				04218ECF2F8C9E390037A20B /* SnapKit */,
-				04218ED12F8C9E390037A20B /* SnapKit-Dynamic */,
 			);
 			productName = WeatherApp;
 			productReference = 04218EB62F8C95E20037A20B /* WeatherApp.app */;
@@ -160,11 +157,12 @@
 				DEVELOPMENT_TEAM = YT2W57F27G;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WeatherApp/Info.plist;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Приложение использует геолокацию для отображения погоды в вашем городе";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -193,11 +191,12 @@
 				DEVELOPMENT_TEAM = YT2W57F27G;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WeatherApp/Info.plist;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Приложение использует геолокацию для отображения погоды в вашем городе";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -376,11 +375,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 04218ECE2F8C9E390037A20B /* XCRemoteSwiftPackageReference "SnapKit" */;
 			productName = SnapKit;
-		};
-		04218ED12F8C9E390037A20B /* SnapKit-Dynamic */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 04218ECE2F8C9E390037A20B /* XCRemoteSwiftPackageReference "SnapKit" */;
-			productName = "SnapKit-Dynamic";
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
