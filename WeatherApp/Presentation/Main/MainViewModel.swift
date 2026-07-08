@@ -43,8 +43,6 @@ final class MainViewModel {
             onStateChanged?(.loading)
         }
 
-        locationManager.requestPermission()
-
         locationManager.onLocationUpdate = { [weak self] location in
             guard let self else { return }
 
@@ -84,5 +82,7 @@ final class MainViewModel {
             let message = error.localizedDescription ?? "Ошибка геолокации"
             self?.onStateChanged?(.error(message))
         }
+
+        locationManager.requestPermission()
     }
 }
