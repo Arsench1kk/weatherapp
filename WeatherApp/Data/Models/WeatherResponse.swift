@@ -1,27 +1,27 @@
 import Foundation
 
 struct WeatherResponse: Decodable {
-    let name: String
-    let coord: Coord
+    let name: String?
+    let coord: Coord?
     let main: MainWeather
-    let weather: [WeatherCondition]
-    let wind: Wind
-    let sys: Sys        // ← Добавь
-    let dt: TimeInterval // ← Добавь
+    let weather: [WeatherCondition]?
+    let wind: Wind?
+    let sys: Sys?
+    let dt: TimeInterval?
 }
 
 struct Coord: Decodable {
-    let lat: Double
-    let lon: Double
+    let lat: Double?
+    let lon: Double?
 }
 
 struct MainWeather: Decodable {
     let temp: Double
-    let feelsLike: Double
-    let tempMin: Double
-    let tempMax: Double
-    let humidity: Int
-    let pressure: Int
+    let feelsLike: Double?
+    let tempMin: Double?
+    let tempMax: Double?
+    let humidity: Int?
+    let pressure: Int?
 
     enum CodingKeys: String, CodingKey {
         case temp, humidity, pressure
@@ -32,11 +32,11 @@ struct MainWeather: Decodable {
 }
 
 struct Wind: Decodable {
-    let speed: Double
-    let deg: Int
+    let speed: Double?
+    let deg: Int?
 }
 
 struct Sys: Decodable {
-    let sunrise: TimeInterval
-    let sunset: TimeInterval
+    let sunrise: TimeInterval?
+    let sunset: TimeInterval?
 }
