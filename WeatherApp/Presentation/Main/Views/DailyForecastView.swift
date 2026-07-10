@@ -7,18 +7,34 @@ final class DailyForecastView: UIView {
 
     private let containerView: UIView = {
         let v = UIView()
-        v.backgroundColor = .white.withAlphaComponent(0.15)
-        v.layer.cornerRadius = 16
+        v.backgroundColor = WeatherCardStyle.backgroundColor
+        v.layer.cornerRadius = WeatherCardStyle.cornerRadius
         v.clipsToBounds = true
         return v
     }()
 
+    private let headerIconView: UIImageView = {
+        let iv = UIImageView()
+        iv.image = UIImage(systemName: "calendar", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))
+        iv.tintColor = WeatherCardStyle.titleColor
+        iv.contentMode = .scaleAspectFit
+        return iv
+    }()
+
     private let headerLabel: UILabel = {
         let l = UILabel()
-        l.text = "☰ ПРОГНОЗ НА 10 ДНЕЙ"
-        l.font = .systemFont(ofSize: 12, weight: .semibold)
-        l.textColor = .white.withAlphaComponent(0.7)
+        l.text = "ПРОГНОЗ НА 10 ДНЕЙ"
+        l.font = .systemFont(ofSize: 12, weight: .medium)
+        l.textColor = WeatherCardStyle.titleColor
         return l
+    }()
+
+    private lazy var headerStackView: UIStackView = {
+        let sv = UIStackView(arrangedSubviews: [headerIconView, headerLabel])
+        sv.axis = .horizontal
+        sv.spacing = 4
+        sv.alignment = .center
+        return sv
     }()
 
     private let stackView: UIStackView = {
@@ -39,17 +55,19 @@ final class DailyForecastView: UIView {
         addSubview(containerView)
         containerView.snp.makeConstraints { $0.edges.equalToSuperview() }
 
-        [headerLabel, stackView].forEach { containerView.addSubview($0) }
+        [headerStackView, stackView].forEach { containerView.addSubview($0) }
 
-        headerLabel.snp.makeConstraints { make in
+        headerIconView.snp.makeConstraints { $0.size.equalTo(16) }
+
+        headerStackView.snp.makeConstraints { make in
             make.top.equalToSuperview().inset(12)
             make.leading.equalToSuperview().inset(16)
         }
 
         stackView.snp.makeConstraints { make in
-            make.top.equalTo(headerLabel.snp.bottom).offset(8)
+            make.top.equalTo(headerStackView.snp.bottom).offset(12)
             make.leading.trailing.equalToSuperview()
-            make.bottom.equalToSuperview().inset(8)
+            make.bottom.equalToSuperview().inset(12)
         }
     }
 
@@ -63,7 +81,7 @@ final class DailyForecastView: UIView {
 
             if index < items.count - 1 {
                 let sep = UIView()
-                sep.backgroundColor = .white.withAlphaComponent(0.15)
+                sep.backgroundColor = WeatherCardStyle.separatorColor
                 sep.snp.makeConstraints { $0.height.equalTo(1) }
                 stackView.addArrangedSubview(sep)
             }
@@ -78,7 +96,7 @@ final class DailyForecastRow: UIView {
     private let dayLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 18, weight: .medium)
-        l.textColor = .white
+        l.textColor = WeatherCardStyle.primaryTextColor
         l.setContentHuggingPriority(.required, for: .horizontal)
         return l
     }()
@@ -86,14 +104,14 @@ final class DailyForecastRow: UIView {
     private let iconView: UIImageView = {
         let iv = UIImageView()
         iv.contentMode = .scaleAspectFit
-        iv.tintColor = .white
+        iv.tintColor = WeatherCardStyle.primaryTextColor
         return iv
     }()
 
     private let minTempLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 17)
-        l.textColor = .white.withAlphaComponent(0.6)
+        l.textColor = WeatherCardStyle.secondaryTextColor
         l.textAlignment = .right
         l.setContentHuggingPriority(.required, for: .horizontal)
         return l
@@ -104,7 +122,7 @@ final class DailyForecastRow: UIView {
     private let maxTempLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 17)
-        l.textColor = .white
+        l.textColor = WeatherCardStyle.primaryTextColor
         l.setContentHuggingPriority(.required, for: .horizontal)
         return l
     }()
@@ -135,7 +153,7 @@ final class DailyForecastRow: UIView {
         iconView.snp.makeConstraints    { $0.size.equalTo(24) }
         minTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
         maxTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
-        barContainer.snp.makeConstraints { $0.height.equalTo(6) }
+        barContainer.snp.makeConstraints { $0.height.equalTo(4) }
     }
 
     func configure(with model: DailyForecastUIModel) {
@@ -169,13 +187,13 @@ final class DailyForecastRow: UIView {
         let startRatio = CGFloat(model.minTemp - model.globalMin) / CGFloat(globalRange)
         let endRatio   = CGFloat(model.maxTemp - model.globalMin) / CGFloat(globalRange)
 
-        let h: CGFloat = 6
-        let r: CGFloat = 3
+        let h: CGFloat = 4
+        let r: CGFloat = 2
 
         // Серый фон (вся ширина)
         let bg = CALayer()
         bg.frame = CGRect(x: 0, y: 0, width: width, height: h)
-        bg.backgroundColor = UIColor.white.withAlphaComponent(0.2).cgColor
+        bg.backgroundColor = UIColor.black.withAlphaComponent(0.08).cgColor
         bg.cornerRadius = r
         barContainer.layer.addSublayer(bg)
 
@@ -183,42 +201,10 @@ final class DailyForecastRow: UIView {
         let barX = startRatio * width
         let barW = max((endRatio - startRatio) * width, 8)
 
-        let gradient = CAGradientLayer()
-        gradient.frame = CGRect(x: barX, y: 0, width: barW, height: h)
-        gradient.cornerRadius = r
-        gradient.startPoint = CGPoint(x: 0, y: 0.5)
-        gradient.endPoint   = CGPoint(x: 1, y: 0.5)
-
-        let cold = UIColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1)
-        let warm = UIColor(red: 1.0, green: 0.6, blue: 0.2, alpha: 1)
-        let mid  = UIColor(red: 0.6, green: 0.85, blue: 0.6, alpha: 1)
-        let avg  = (startRatio + endRatio) / 2
-
-        let (startColor, endColor): (UIColor, UIColor)
-        if avg < 0.3 {
-            (startColor, endColor) = (cold, cold.withAlphaComponent(0.8))
-        } else if avg > 0.7 {
-            (startColor, endColor) = (warm.withAlphaComponent(0.8), warm)
-        } else {
-            let t = (avg - 0.3) / 0.4
-            startColor = blend(cold, mid,  t: t)
-            endColor   = blend(mid,  warm, t: t)
-        }
-
-        gradient.colors = [startColor.cgColor, endColor.cgColor]
-        barContainer.layer.addSublayer(gradient)
-    }
-
-    private func blend(_ a: UIColor, _ b: UIColor, t: CGFloat) -> UIColor {
-        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
-        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
-        a.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
-        b.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
-        return UIColor(
-            red:   r1 + (r2 - r1) * t,
-            green: g1 + (g2 - g1) * t,
-            blue:  b1 + (b2 - b1) * t,
-            alpha: a1 + (a2 - a1) * t
-        )
+        let bar = CALayer()
+        bar.frame = CGRect(x: barX, y: 0, width: barW, height: h)
+        bar.cornerRadius = r
+        bar.backgroundColor = WeatherCardStyle.accentMint.cgColor
+        barContainer.layer.addSublayer(bar)
     }
 }
