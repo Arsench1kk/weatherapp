@@ -16,7 +16,7 @@ final class WeatherErrorView: UIView {
     private let messageLabel: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 17)
-        l.textColor = .white
+        l.textColor = AppColors.textPrimary
         l.textAlignment = .center
         l.numberOfLines = 0
         return l
@@ -25,8 +25,8 @@ final class WeatherErrorView: UIView {
     private lazy var retryButton: UIButton = {
         let btn = UIButton(type: .system)
         btn.setTitle("Повторить", for: .normal)
-        btn.setTitleColor(.white, for: .normal)
-        btn.backgroundColor = .white.withAlphaComponent(0.2)
+        btn.setTitleColor(AppColors.textPrimary, for: .normal)
+        btn.backgroundColor = AppColors.weatherErrorButtonBackground
         btn.layer.cornerRadius = 12
         btn.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
         btn.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)

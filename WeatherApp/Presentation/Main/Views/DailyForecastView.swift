@@ -1,36 +1,24 @@
 import UIKit
 import SnapKit
 
-// MARK: - DailyForecastView (контейнер)
-
 final class DailyForecastView: UIView {
 
-    private let containerView: UIView = {
-        let v = UIView()
-        v.backgroundColor = WeatherCardStyle.backgroundColor
-        v.layer.cornerRadius = WeatherCardStyle.cornerRadius
-        v.clipsToBounds = true
-        return v
-    }()
+    private let containerView = WeatherCardStyle.makeContainerView()
 
-    private let headerIconView: UIImageView = {
+    private let headerLabel = AppTextStyle.label(
+        style: UIFont.systemFont(ofSize: 15, weight: .medium),
+        color: AppColors.textSecondary
+    )
+
+    private lazy var headerStack: UIStackView = {
         let iv = UIImageView()
-        iv.image = UIImage(systemName: "calendar", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))
-        iv.tintColor = WeatherCardStyle.titleColor
+        iv.image = UIImage(systemName: "calendar", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
+            .withRenderingMode(.alwaysOriginal)
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconSecondary]))
         iv.contentMode = .scaleAspectFit
-        return iv
-    }()
+        iv.snp.makeConstraints { $0.size.equalTo(14) }
 
-    private let headerLabel: UILabel = {
-        let l = UILabel()
-        l.text = "ПРОГНОЗ НА 10 ДНЕЙ"
-        l.font = .systemFont(ofSize: 12, weight: .medium)
-        l.textColor = WeatherCardStyle.titleColor
-        return l
-    }()
-
-    private lazy var headerStackView: UIStackView = {
-        let sv = UIStackView(arrangedSubviews: [headerIconView, headerLabel])
+        let sv = UIStackView(arrangedSubviews: [iv, headerLabel])
         sv.axis = .horizontal
         sv.spacing = 4
         sv.alignment = .center
@@ -55,23 +43,28 @@ final class DailyForecastView: UIView {
         addSubview(containerView)
         containerView.snp.makeConstraints { $0.edges.equalToSuperview() }
 
-        [headerStackView, stackView].forEach { containerView.addSubview($0) }
-
-        headerIconView.snp.makeConstraints { $0.size.equalTo(16) }
-
-        headerStackView.snp.makeConstraints { make in
-            make.top.equalToSuperview().inset(12)
-            make.leading.equalToSuperview().inset(16)
+        let headerWrapper = UIView()
+        headerWrapper.addSubview(headerStack)
+        headerStack.snp.makeConstraints { make in
+            make.top.bottom.equalToSuperview().inset(12)
+            make.leading.trailing.equalToSuperview().inset(16)
         }
-
-        stackView.snp.makeConstraints { make in
-            make.top.equalTo(headerStackView.snp.bottom).offset(12)
-            make.leading.trailing.equalToSuperview()
-            make.bottom.equalToSuperview().inset(12)
+        
+        let mainStack = UIStackView(arrangedSubviews: [
+            headerWrapper,
+            WeatherCardStyle.makeSeparator(),
+            stackView
+        ])
+        mainStack.axis = .vertical
+        
+        containerView.addSubview(mainStack)
+        mainStack.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
         }
     }
 
     func configure(with items: [DailyForecastUIModel]) {
+        headerLabel.text = "ПРОГНОЗ НА \(items.count) ДНЕЙ"
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
         for (index, item) in items.enumerated() {
@@ -80,23 +73,26 @@ final class DailyForecastView: UIView {
             stackView.addArrangedSubview(row)
 
             if index < items.count - 1 {
-                let sep = UIView()
-                sep.backgroundColor = WeatherCardStyle.separatorColor
-                sep.snp.makeConstraints { $0.height.equalTo(1) }
-                stackView.addArrangedSubview(sep)
+                let sepWrapper = UIView()
+                let sep = WeatherCardStyle.makeSeparator()
+                sepWrapper.addSubview(sep)
+                sep.snp.makeConstraints { make in
+                    make.top.bottom.equalToSuperview()
+                    make.leading.trailing.equalToSuperview().inset(16)
+                }
+                stackView.addArrangedSubview(sepWrapper)
+                sepWrapper.snp.makeConstraints { $0.height.equalTo(1) }
             }
         }
     }
 }
 
-// MARK: - DailyForecastRow (строка с температурной шкалой)
+// MARK: - Row
 
-final class DailyForecastRow: UIView {
+private final class DailyForecastRow: UIView {
 
     private let dayLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 18, weight: .medium)
-        l.textColor = WeatherCardStyle.primaryTextColor
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textPrimary)
         l.setContentHuggingPriority(.required, for: .horizontal)
         return l
     }()
@@ -104,37 +100,58 @@ final class DailyForecastRow: UIView {
     private let iconView: UIImageView = {
         let iv = UIImageView()
         iv.contentMode = .scaleAspectFit
-        iv.tintColor = WeatherCardStyle.primaryTextColor
         return iv
     }()
 
     private let minTempLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 17)
-        l.textColor = WeatherCardStyle.secondaryTextColor
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textSecondary)
         l.textAlignment = .right
         l.setContentHuggingPriority(.required, for: .horizontal)
         return l
     }()
 
-    private let barContainer = UIView()  // Здесь рисуется CAGradientLayer
+    private let barContainer = UIView()
 
     private let maxTempLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 17)
-        l.textColor = WeatherCardStyle.primaryTextColor
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textPrimary)
         l.setContentHuggingPriority(.required, for: .horizontal)
         return l
     }()
 
     private var currentModel: DailyForecastUIModel?
-
+    private let bgLayer = CALayer()
+    private let gradientLayer = CAGradientLayer()
+    private let markerLayer = CALayer()
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
+        setupLayers()
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    private func setupLayers() {
+        bgLayer.backgroundColor = AppColors.weatherTemperatureBarTrack.cgColor
+        bgLayer.cornerRadius = 2
+        barContainer.layer.addSublayer(bgLayer)
+
+        gradientLayer.cornerRadius = 2
+        gradientLayer.colors = [
+            AppColors.weatherTemperatureBarStart.cgColor,
+            AppColors.weatherTemperatureBarEnd.cgColor
+        ]
+        gradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        gradientLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        barContainer.layer.addSublayer(gradientLayer)
+        
+        markerLayer.backgroundColor = AppColors.weatherTemperatureMarker.cgColor
+        markerLayer.cornerRadius = 4
+        markerLayer.borderWidth = 2
+        markerLayer.borderColor = AppColors.weatherTemperatureMarkerBorder.cgColor
+        markerLayer.isHidden = true
+        barContainer.layer.addSublayer(markerLayer)
+    }
 
     private func setupUI() {
         let stack = UIStackView(arrangedSubviews: [
@@ -149,7 +166,7 @@ final class DailyForecastRow: UIView {
             make.edges.equalToSuperview().inset(UIEdgeInsets(top: 10, left: 16, bottom: 10, right: 16))
         }
 
-        dayLabel.snp.makeConstraints    { $0.width.equalTo(90) }
+        dayLabel.snp.makeConstraints    { $0.width.equalTo(60) }
         iconView.snp.makeConstraints    { $0.size.equalTo(24) }
         minTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
         maxTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
@@ -162,22 +179,22 @@ final class DailyForecastRow: UIView {
         minTempLabel.text = "\(model.minTemp)°"
         maxTempLabel.text = "\(model.maxTemp)°"
 
-        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
-        iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)
+        let config = UIImage.SymbolConfiguration(pointSize: 24, weight: .medium)
+        iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)?
+            .withRenderingMode(.alwaysOriginal)
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [
+                AppColors.weatherSunIcon,
+                AppColors.weatherCloudIcon,
+                AppColors.weatherPrecipitationIcon
+            ]))
 
-        setNeedsLayout()  // Просим пересчитать layout → вызовет layoutSubviews
+        setNeedsLayout()
     }
 
-    // layoutSubviews вызывается ПОСЛЕ того как view получила реальный frame
     override func layoutSubviews() {
         super.layoutSubviews()
         guard let model = currentModel else { return }
-        drawTemperatureBar(model: model)
-    }
-
-    private func drawTemperatureBar(model: DailyForecastUIModel) {
-        barContainer.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
-
+        
         let width = barContainer.bounds.width
         guard width > 0 else { return }
 
@@ -188,23 +205,22 @@ final class DailyForecastRow: UIView {
         let endRatio   = CGFloat(model.maxTemp - model.globalMin) / CGFloat(globalRange)
 
         let h: CGFloat = 4
-        let r: CGFloat = 2
+        
+        bgLayer.frame = CGRect(x: 0, y: 0, width: width, height: h)
 
-        // Серый фон (вся ширина)
-        let bg = CALayer()
-        bg.frame = CGRect(x: 0, y: 0, width: width, height: h)
-        bg.backgroundColor = UIColor.black.withAlphaComponent(0.08).cgColor
-        bg.cornerRadius = r
-        barContainer.layer.addSublayer(bg)
-
-        // Цветная полоска
         let barX = startRatio * width
         let barW = max((endRatio - startRatio) * width, 8)
-
-        let bar = CALayer()
-        bar.frame = CGRect(x: barX, y: 0, width: barW, height: h)
-        bar.cornerRadius = r
-        bar.backgroundColor = WeatherCardStyle.accentMint.cgColor
-        barContainer.layer.addSublayer(bar)
+        gradientLayer.frame = CGRect(x: barX, y: 0, width: barW, height: h)
+        
+        if model.dayName == "Сегодня" {
+            markerLayer.isHidden = false
+            let markerSize: CGFloat = 8
+            // Ставим маркер примерно в центр диапазона так как точную текущую температуру передать нельзя (ограничение моделей)
+            let currentRatio = startRatio + (endRatio - startRatio) / 2
+            let markerX = currentRatio * width - markerSize / 2
+            markerLayer.frame = CGRect(x: markerX, y: -2, width: markerSize, height: markerSize)
+        } else {
+            markerLayer.isHidden = true
+        }
     }
 }

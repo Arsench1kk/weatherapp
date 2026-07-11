@@ -1,7 +1,7 @@
 import Foundation
 
 protocol GetWeatherUseCaseProtocol {
-    func execute(lat: Double, lon: Double) async throws -> WeatherResponse
+    func execute(lat: Double, lon: Double) async throws -> OneCallResponse
 }
 
 final class GetWeatherUseCase: GetWeatherUseCaseProtocol {
@@ -12,7 +12,7 @@ final class GetWeatherUseCase: GetWeatherUseCaseProtocol {
         self.repository = repository
     }
 
-    func execute(lat: Double, lon: Double) async throws -> WeatherResponse {
-        try await repository.fetchCurrentWeather(lat: lat, lon: lon)
+    func execute(lat: Double, lon: Double) async throws -> OneCallResponse {
+        try await repository.fetchWeather(lat: lat, lon: lon)
     }
 }

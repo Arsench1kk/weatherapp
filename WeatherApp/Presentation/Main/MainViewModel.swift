@@ -10,19 +10,22 @@ final class MainViewModel {
     // MARK: - Dependencies
 
     private let getWeatherUseCase: GetWeatherUseCaseProtocol
-    private let getForecastUseCase: GetForecastUseCaseProtocol
     private var locationManager: LocationManagerProtocol
+    private var weatherTask: Task<Void, Never>?
 
     // MARK: - Init
 
     init(
         getWeatherUseCase: GetWeatherUseCaseProtocol,
-        getForecastUseCase: GetForecastUseCaseProtocol,
         locationManager: LocationManagerProtocol
     ) {
         self.getWeatherUseCase = getWeatherUseCase
-        self.getForecastUseCase = getForecastUseCase
         self.locationManager = locationManager
+        setupLocationCallbacks()
+    }
+
+    deinit {
+        weatherTask?.cancel()
     }
 
     // MARK: - Public Interface
@@ -39,50 +42,53 @@ final class MainViewModel {
     // MARK: - Private
 
     private func fetchWeather(showLoading: Bool = true) {
+        weatherTask?.cancel()
+
         if showLoading {
             onStateChanged?(.loading)
         }
 
+        locationManager.requestPermission()
+    }
+
+    private func setupLocationCallbacks() {
         locationManager.onLocationUpdate = { [weak self] location in
-            guard let self else { return }
-
             Task { @MainActor in
-                do {
-                    // Запускаем оба запроса параллельно через async let
-                    async let current = self.getWeatherUseCase.execute(
-                        lat: location.coordinate.latitude,
-                        lon: location.coordinate.longitude
-                    )
-
-                    async let forecast = self.getForecastUseCase.execute(
-                        lat: location.coordinate.latitude,
-                        lon: location.coordinate.longitude
-                    )
-
-                    // Ждём оба результата
-                    let (currentResult, forecastResult) = try await (current, forecast)
-
-                    // Маппим в UI-модель
-                    let uiModel = WeatherMapper.map(
-                        current: currentResult,
-                        forecast: forecastResult
-                    )
-
-                    self.onStateChanged?(.loaded(uiModel))
-
-                } catch {
-                    let message = (error as? NetworkError)?.errorDescription
-                        ?? error.localizedDescription
-                    self.onStateChanged?(.error(message))
-                }
+                self?.loadWeather(for: location)
             }
         }
 
         locationManager.onError = { [weak self] error in
-            let message = error.localizedDescription ?? "Ошибка геолокации"
-            self?.onStateChanged?(.error(message))
+            Task { @MainActor in
+                let message = error.errorDescription ?? "Ошибка геолокации"
+                self?.onStateChanged?(.error(message))
+            }
         }
+    }
 
-        locationManager.requestPermission()
+    private func loadWeather(for location: CLLocation) {
+        weatherTask?.cancel()
+
+        weatherTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            do {
+                let response = try await self.getWeatherUseCase.execute(
+                    lat: location.coordinate.latitude,
+                    lon: location.coordinate.longitude
+                )
+                guard !Task.isCancelled else { return }
+
+                let uiModel = WeatherMapper.map(response: response)
+                self.onStateChanged?(.loaded(uiModel))
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                let message = (error as? LocalizedError)?.errorDescription
+                    ?? error.localizedDescription
+                self.onStateChanged?(.error(message))
+            }
+        }
     }
 }

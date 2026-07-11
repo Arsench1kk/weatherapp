@@ -2,35 +2,32 @@ import Foundation
 
 final class WeatherMapper {
 
-    static func map(
-        current: WeatherResponse,
-        forecast: ForecastResponse
-    ) -> MainWeatherUIModel {
-        let hourly = mapHourly(current: current, forecast: forecast)
-        let daily = mapDaily(forecast: forecast)
-        let timeOfDay = TimeOfDay.current()
+    static func map(response: OneCallResponse) -> MainWeatherUIModel {
+        let current = response.current
+        let hourly = mapHourly(hourly: response.hourly, timezoneOffset: response.timezoneOffset, currentSunset: current.sunset)
+        let daily = mapDaily(daily: response.daily, timezoneOffset: response.timezoneOffset)
+        let timeOfDay = TimeOfDay.fromTimezone(offset: response.timezoneOffset)
         let isRaining = isCurrentlyRaining(current: current)
+        let feelsLike = current.feelsLike ?? current.temp
 
         return MainWeatherUIModel(
-            cityName: current.name ?? "Неизвестно",
-            temperature: "\(Int(current.main.temp))°",
+            cityName: "Текущее местоположение", // One Call API не возвращает имя города, обычно используют reverse geocoding. Оставляем заглушку или можно передавать извне.
+            temperature: "\(Int(current.temp))°",
             description: (current.weather?.first?.description ?? "Нет данных").capitalized,
-            minMaxTemp: "Макс.: \(Int(current.main.tempMax ?? current.main.temp))°, мин.: \(Int(current.main.tempMin ?? current.main.temp))°",
-            feelsLike: "\(Int(current.main.feelsLike ?? current.main.temp))°",
-            humidity: "\(current.main.humidity ?? 0) %",
-            windSpeed: "\(Int((current.wind?.speed ?? 0) * 3.6)) км/ч",
-            windGust: "14 км/ч", // Gust нет в бесплатном API
-            windDirection: formatWindDirection(degrees: current.wind?.deg ?? 0),
-            pressure: formatPressure(current.main.pressure ?? 1000),
-            uvIndex: "0",           // UV нет в бесплатном API
-            uvDescription: "Низкий",
-            sunrise: formatTime(current.sys?.sunrise ?? 0),
-            sunset: formatTime(current.sys?.sunset ?? 0),
-            dewPoint: formatDewPoint(
-                temperature: current.main.temp,
-                humidity: current.main.humidity ?? 0
-            ),
-            todayMaxTemperature: "\(Int(current.main.tempMax ?? current.main.temp))°",
+            minMaxTemp: "Макс.: \(daily.first?.maxTemp ?? Int(current.temp))°, мин.: \(daily.first?.minTemp ?? Int(current.temp))°",
+            feelsLike: "\(Int(feelsLike))°",
+            feelsLikeDetail: makeFeelsLikeDetail(actual: current.temp, feelsLike: feelsLike),
+            humidity: "\(current.humidity ?? 0) %",
+            windSpeed: "\(Int((current.windSpeed ?? 0) * 3.6)) км/ч",
+            windGust: current.windGust.map { "\(Int($0 * 3.6)) км/ч" } ?? "-",
+            windDirection: formatWindDirection(degrees: current.windDeg ?? 0),
+            pressure: current.pressure.map(formatPressure) ?? "-",
+            uvIndex: "\(Int(current.uvi ?? 0))",
+            uvDescription: getUvDescription(current.uvi ?? 0),
+            sunrise: formatTime(current.sunrise ?? 0, offset: response.timezoneOffset),
+            sunset: formatTime(current.sunset ?? 0, offset: response.timezoneOffset),
+            dewPoint: "\(Int(current.dewPoint ?? 0))°",
+            todayMaxTemperature: "\(daily.first?.maxTemp ?? Int(current.temp))°",
             hourlyForecast: hourly,
             dailyForecast: daily,
             conditionSummary: buildSummary(current: current),
@@ -42,28 +39,30 @@ final class WeatherMapper {
     // MARK: - Hourly
 
     private static func mapHourly(
-        current: WeatherResponse,
-        forecast: ForecastResponse
+        hourly: [HourlyWeather],
+        timezoneOffset: Int,
+        currentSunset: TimeInterval?
     ) -> [HourlyForecastUIModel] {
         var result: [HourlyForecastUIModel] = []
 
-        // Первый элемент — "Сейчас"
-        result.append(HourlyForecastUIModel(
-            time: "Сейчас",
-            temperature: "\(Int(current.main.temp))°",
-            symbolName: sfSymbol(for: current.weather?.first?.icon ?? "01d"),
-            isSpecial: false
-        ))
-
-        let nextItems = forecast.list.prefix(8) // 8 * 3ч = 24ч
-        let sunset = current.sys?.sunset ?? 0
+        let nextItems = hourly.prefix(24) // 24 часа
+        let sunset = currentSunset ?? 0
         var sunsetInserted = false
 
-        for item in nextItems {
-            // Вставляем закат перед слотом, который идёт после него
+        for (index, item) in nextItems.enumerated() {
+            if index == 0 {
+                result.append(HourlyForecastUIModel(
+                    time: "Сейчас",
+                    temperature: "\(Int(item.temp))°",
+                    symbolName: sfSymbol(for: item.weather?.first?.icon ?? "01d"),
+                    isSpecial: false
+                ))
+                continue
+            }
+
             if !sunsetInserted && sunset > 0 && item.dt > sunset {
                 result.append(HourlyForecastUIModel(
-                    time: formatTime(sunset),
+                    time: formatTime(sunset, offset: timezoneOffset),
                     temperature: "Закат",
                     symbolName: "sunset.fill",
                     isSpecial: true
@@ -72,8 +71,8 @@ final class WeatherMapper {
             }
 
             result.append(HourlyForecastUIModel(
-                time: formatHour(item.dt),
-                temperature: "\(Int(item.main.temp))°",
+                time: formatHour(item.dt, offset: timezoneOffset),
+                temperature: "\(Int(item.temp))°",
                 symbolName: sfSymbol(for: item.weather?.first?.icon ?? "01d"),
                 isSpecial: false
             ))
@@ -84,43 +83,18 @@ final class WeatherMapper {
 
     // MARK: - Daily
 
-    private static func mapDaily(forecast: ForecastResponse) -> [DailyForecastUIModel] {
-        // Группируем по дням
-        var dayGroups: [String: [ForecastItem]] = [:]
-        var dayOrder: [String] = []
+    private static func mapDaily(daily: [DailyWeather], timezoneOffset: Int) -> [DailyForecastUIModel] {
+        guard !daily.isEmpty else { return [] }
 
-        for item in forecast.list {
-            let date = Date(timeIntervalSince1970: item.dt)
-            let dayKey = dayKeyFormatter.string(from: date)
+        let globalMin = Int(daily.map { $0.temp.min }.min() ?? 0)
+        let globalMax = Int(daily.map { $0.temp.max }.max() ?? 0)
 
-            if dayGroups[dayKey] == nil {
-                dayOrder.append(dayKey)
-            }
-            dayGroups[dayKey, default: []].append(item)
-        }
-
-        // Для каждого дня — мин/макс температура
-        var dailyData: [(day: String, min: Int, max: Int, icon: String)] = []
-
-        for dayKey in dayOrder.prefix(10) {
-            let items = dayGroups[dayKey] ?? []
-            let temps = items.map { $0.main.temp }
-            let minTemp = Int(temps.min() ?? 0)
-            let maxTemp = Int(temps.max() ?? 0)
-            let icon = items.first?.weather?.first?.icon ?? "01d"
-            dailyData.append((dayKey, minTemp, maxTemp, icon))
-        }
-
-        // Глобальный диапазон по всем дням
-        let globalMin = dailyData.map { $0.min }.min() ?? 0
-        let globalMax = dailyData.map { $0.max }.max() ?? 0
-
-        return dailyData.enumerated().map { index, day in
+        return daily.enumerated().map { index, day in
             DailyForecastUIModel(
-                dayName: index == 0 ? "Сегодня" : formatDayName(day.day),
-                symbolName: sfSymbol(for: day.icon),
-                minTemp: day.min,
-                maxTemp: day.max,
+                dayName: index == 0 ? "Сегодня" : formatDayName(day.dt, offset: timezoneOffset),
+                symbolName: sfSymbol(for: day.weather?.first?.icon ?? "01d"),
+                minTemp: Int(day.temp.min),
+                maxTemp: Int(day.temp.max),
                 globalMin: globalMin,
                 globalMax: globalMax
             )
@@ -129,34 +103,49 @@ final class WeatherMapper {
 
     // MARK: - Formatters
 
-    private static let dayKeyFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
     }()
 
-    private static func formatTime(_ timestamp: TimeInterval) -> String {
+    private static let hourFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH"
+        return formatter
+    }()
+
+    private static let dayNameFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.dateFormat = "EE"
+        return formatter
+    }()
+
+    private static let pressureFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        formatter.locale = Locale(identifier: "ru_RU")
+        return formatter
+    }()
+
+    private static func formatTime(_ timestamp: TimeInterval, offset: Int) -> String {
         let date = Date(timeIntervalSince1970: timestamp)
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        timeFormatter.timeZone = TimeZone(secondsFromGMT: offset) ?? .current
+        return timeFormatter.string(from: date)
     }
 
-    private static func formatHour(_ timestamp: TimeInterval) -> String {
+    private static func formatHour(_ timestamp: TimeInterval, offset: Int) -> String {
         let date = Date(timeIntervalSince1970: timestamp)
-        let f = DateFormatter()
-        f.dateFormat = "HH"
-        return f.string(from: date)
+        hourFormatter.timeZone = TimeZone(secondsFromGMT: offset) ?? .current
+        return hourFormatter.string(from: date)
     }
 
-    private static func formatDayName(_ dayKey: String) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        guard let date = f.date(from: dayKey) else { return dayKey }
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "ru_RU")
-        df.dateFormat = "EE"
-        return df.string(from: date).capitalized
+    private static func formatDayName(_ timestamp: TimeInterval, offset: Int) -> String {
+        let date = Date(timeIntervalSince1970: timestamp)
+        dayNameFormatter.timeZone = TimeZone(secondsFromGMT: offset) ?? .current
+        return dayNameFormatter.string(from: date).capitalized
     }
 
     private static func formatWindDirection(degrees: Int) -> String {
@@ -166,29 +155,39 @@ final class WeatherMapper {
     }
 
     private static func formatPressure(_ pressureHPa: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = " "
-        formatter.locale = Locale(identifier: "ru_RU")
-        return formatter.string(from: NSNumber(value: pressureHPa)) ?? "\(pressureHPa)"
+        pressureFormatter.string(from: NSNumber(value: pressureHPa)) ?? "\(pressureHPa)"
     }
 
-    private static func formatDewPoint(temperature: Double, humidity: Int) -> String {
-        let dewPoint = temperature - ((100 - Double(humidity)) / 5)
-        return "\(Int(dewPoint.rounded()))°"
+    private static func getUvDescription(_ uvi: Double) -> String {
+        switch uvi {
+        case 0..<3: return "Низкий"
+        case 3..<6: return "Умеренный"
+        case 6..<8: return "Высокий"
+        case 8..<11: return "Очень высокий"
+        default: return "Экстремальный"
+        }
     }
 
-    private static func buildSummary(current: WeatherResponse) -> String {
+    private static func buildSummary(current: CurrentWeather) -> String {
         let desc = current.weather?.first?.description ?? "переменная облачность"
-        return "Порывы ветра до 14 км/ч. \(desc.capitalized) до конца дня."
+        let gust = current.windGust.map { "Порывы ветра до \(Int($0 * 3.6)) км/ч. " } ?? ""
+        return "\(gust)\(desc.capitalized) до конца дня."
     }
 
-    private static func isCurrentlyRaining(current: WeatherResponse) -> Bool {
-        let weatherId = current.weather?.first?.id ?? 800
-        return weatherId < 700 // Коды < 700 — осадки (дождь, снег, гроза)
+    private static func isCurrentlyRaining(current: CurrentWeather) -> Bool {
+        guard let weatherId = current.weather?.first?.id else { return false }
+        return (200..<600).contains(weatherId)
     }
 
-    // MARK: - SF Symbols по коду иконки OpenWeatherMap
+    private static func makeFeelsLikeDetail(actual: Double, feelsLike: Double) -> String {
+        if feelsLike > actual {
+            return "По ощущениям теплее, чем на самом деле."
+        } else if feelsLike < actual {
+            return "По ощущениям холоднее, чем на самом деле."
+        } else {
+            return "По ощущениям как фактическая температура."
+        }
+    }
 
     static func sfSymbol(for icon: String) -> String {
         switch icon {

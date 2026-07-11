@@ -5,10 +5,15 @@ final class WeatherLoadingView: UIView {
 
     private let spinner: UIActivityIndicatorView = {
         let ai = UIActivityIndicatorView(style: .large)
-        ai.color = .white
-        ai.startAnimating()
+        ai.color = AppColors.textPrimary
         return ai
     }()
+
+    override var isHidden: Bool {
+        didSet {
+            isHidden ? spinner.stopAnimating() : spinner.startAnimating()
+        }
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -18,4 +23,14 @@ final class WeatherLoadingView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+
+        if window != nil, !isHidden {
+            spinner.startAnimating()
+        } else {
+            spinner.stopAnimating()
+        }
+    }
 }

@@ -3,13 +3,7 @@ import SnapKit
 
 final class HourlyForecastView: UIView {
 
-    private let containerView: UIView = {
-        let v = UIView()
-        v.backgroundColor = .white.withAlphaComponent(0.15)
-        v.layer.cornerRadius = 16
-        v.clipsToBounds = true
-        return v
-    }()
+    private let containerView = WeatherCardStyle.makeContainerView()
 
     private let scrollView: UIScrollView = {
         let sv = UIScrollView()
@@ -41,10 +35,9 @@ final class HourlyForecastView: UIView {
         scrollView.addSubview(stackView)
 
         scrollView.snp.makeConstraints { make in
-            make.edges.equalToSuperview().inset(UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12))
+            make.edges.equalToSuperview().inset(WeatherCardStyle.contentInsets)
         }
 
-        // Критично: edges к contentLayoutGuide, height к frameLayoutGuide
         stackView.snp.makeConstraints { make in
             make.edges.equalTo(scrollView.contentLayoutGuide)
             make.height.equalTo(scrollView.frameLayoutGuide)
@@ -60,8 +53,7 @@ final class HourlyForecastView: UIView {
             stackView.addArrangedSubview(cell)
 
             if index < items.count - 1 {
-                let sep = UIView()
-                sep.backgroundColor = .white.withAlphaComponent(0.2)
+                let sep = WeatherCardStyle.makeSeparator()
                 sep.snp.makeConstraints { $0.width.equalTo(1) }
                 stackView.addArrangedSubview(sep)
             }
@@ -69,30 +61,23 @@ final class HourlyForecastView: UIView {
     }
 }
 
-// MARK: - HourlyCell (private — видна только внутри этого файла)
+// MARK: - HourlyCell
 
 private final class HourlyCell: UIView {
 
     private let timeLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 14)
-        l.textColor = .white
-        l.textAlignment = .center
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary, alignment: .center)
         return l
     }()
 
     private let iconView: UIImageView = {
         let iv = UIImageView()
         iv.contentMode = .scaleAspectFit
-        iv.tintColor = .white
         return iv
     }()
 
     private let tempLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 16, weight: .medium)
-        l.textColor = .white
-        l.textAlignment = .center
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 17, weight: .semibold), color: AppColors.textPrimary, alignment: .center)
         return l
     }()
 
@@ -118,15 +103,21 @@ private final class HourlyCell: UIView {
 
     func configure(with model: HourlyForecastUIModel) {
         timeLabel.text = model.time
-        let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
-        iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)
+        let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
+        iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)?
+            .withRenderingMode(.alwaysOriginal)
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [
+                AppColors.weatherSunIcon,
+                AppColors.weatherCloudIcon,
+                AppColors.weatherPrecipitationIcon
+            ]))
 
         if model.isSpecial {
             tempLabel.text = "Закат"
-            tempLabel.font = .systemFont(ofSize: 12)
+            tempLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
         } else {
             tempLabel.text = model.temperature
-            tempLabel.font = .systemFont(ofSize: 16, weight: .medium)
+            tempLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
         }
     }
 }

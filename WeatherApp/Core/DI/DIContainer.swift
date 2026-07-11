@@ -16,22 +16,21 @@ final class DIContainer {
     
     // MARK: - Repositories
     
-    private func makeWeatherRepository() -> WeatherRepositoryProtocol {
+    private lazy var weatherRepository: WeatherRepositoryProtocol = {
         WeatherRepository(networkService: networkService)
-    }
+    }()
     
     // MARK: - UseCases
     
-    private func makeGetWeatherUseCase() -> GetWeatherUseCaseProtocol {
-        GetWeatherUseCase(repository: makeWeatherRepository())
-    }
+    private lazy var getWeatherUseCase: GetWeatherUseCaseProtocol = {
+        GetWeatherUseCase(repository: weatherRepository)
+    }()
     
     // MARK: - ViewModels
     
     private func makeMainViewModel() -> MainViewModel {
         MainViewModel(
-            getWeatherUseCase: makeGetWeatherUseCase(),
-            getForecastUseCase: makeGetForecastUseCase(),   // ← это было нужно добавить
+            getWeatherUseCase: getWeatherUseCase,
             locationManager: locationManager
         )
     }
@@ -41,10 +40,6 @@ final class DIContainer {
     
     func makeMainViewController() -> MainViewController {
         MainViewController(viewModel: makeMainViewModel())
-    }
-    
-    private func makeGetForecastUseCase() -> GetForecastUseCaseProtocol {
-        GetForecastUseCase(repository: makeWeatherRepository())
     }
 
 }

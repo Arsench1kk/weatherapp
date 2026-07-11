@@ -7,18 +7,16 @@ final class WeatherHeaderView: UIView {
 
     private let locationIconView: UIImageView = {
         let iv = UIImageView()
-        iv.image = UIImage(systemName: "location.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 9, weight: .medium))
-        iv.tintColor = WeatherCardStyle.primaryTextColor
+        iv.image = UIImage(systemName: "location.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
+            .withRenderingMode(.alwaysOriginal)
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconPrimary]))
         iv.contentMode = .scaleAspectFit
         return iv
     }()
 
     private let locationLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 12, weight: .medium)
-        l.textColor = WeatherCardStyle.primaryTextColor
-        l.textAlignment = .center
-        l.text = "РАБОТА"
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .medium), color: AppColors.textPrimary, alignment: .center)
+        l.text = nil
         return l
     }()
 
@@ -31,40 +29,28 @@ final class WeatherHeaderView: UIView {
     }()
 
     private let cityLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 32, weight: .medium)
-        l.textColor = WeatherCardStyle.primaryTextColor
-        l.textAlignment = .center
+        let l = AppTextStyle.label(style: AppTextStyle.locationName, color: AppColors.textPrimary, alignment: .center)
         l.adjustsFontSizeToFitWidth = true
         l.minimumScaleFactor = 0.75
         return l
     }()
 
     private let temperatureLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 92, weight: .thin)
-        l.textColor = WeatherCardStyle.primaryTextColor
-        l.textAlignment = .center
+        let l = AppTextStyle.label(style: AppTextStyle.currentTemp, color: AppColors.textPrimary, alignment: .center)
         l.adjustsFontSizeToFitWidth = true
         l.minimumScaleFactor = 0.75
         return l
     }()
 
     private let descriptionLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 18, weight: .medium)
-        l.textColor = UIColor(red: 201 / 255, green: 1, blue: 250 / 255, alpha: 1)
-        l.textAlignment = .center
+        let l = AppTextStyle.label(style: AppTextStyle.condition, color: AppColors.textPrimary, alignment: .center)
         l.adjustsFontSizeToFitWidth = true
         l.minimumScaleFactor = 0.75
         return l
     }()
 
     private let minMaxLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 18, weight: .medium)
-        l.textColor = WeatherCardStyle.primaryTextColor
-        l.textAlignment = .center
+        let l = AppTextStyle.label(style: AppTextStyle.condition, color: AppColors.textSecondary, alignment: .center)
         l.adjustsFontSizeToFitWidth = true
         l.minimumScaleFactor = 0.75
         return l

@@ -6,9 +6,7 @@ final class WeatherHourlySummaryCard: UIView {
     private let containerView = WeatherCardStyle.makeContainerView()
 
     private let summaryLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textColor = WeatherCardStyle.primaryTextColor
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 16, weight: .regular), color: AppColors.textPrimary)
         label.numberOfLines = 0
         return label
     }()
@@ -69,7 +67,7 @@ final class WeatherHourlySummaryCard: UIView {
             view.removeFromSuperview()
         }
 
-        for item in items.prefix(6) {
+        for item in items {
             let cell = WeatherHourlySummaryCell()
             cell.configure(with: item)
             hourlyStackView.addArrangedSubview(cell)
@@ -80,10 +78,7 @@ final class WeatherHourlySummaryCard: UIView {
 private final class WeatherHourlySummaryCell: UIView {
 
     private let timeLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
-        label.textAlignment = .center
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary, alignment: .center)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()
@@ -91,15 +86,11 @@ private final class WeatherHourlySummaryCell: UIView {
     private let iconView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
-        imageView.tintColor = WeatherCardStyle.primaryTextColor
         return imageView
     }()
 
     private let temperatureLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.textColor = WeatherCardStyle.primaryTextColor
-        label.textAlignment = .center
+        let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: AppColors.textPrimary, alignment: .center)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()
@@ -130,10 +121,16 @@ private final class WeatherHourlySummaryCell: UIView {
         timeLabel.text = model.time
         temperatureLabel.text = model.isSpecial ? "Закат" : model.temperature
         temperatureLabel.font = model.isSpecial
-            ? .systemFont(ofSize: 12, weight: .medium)
-            : .systemFont(ofSize: 15, weight: .medium)
+            ? UIFont.systemFont(ofSize: 11, weight: .regular)
+            : UIFont.systemFont(ofSize: 12, weight: .regular)
 
-        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
-        iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)
+        let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
+        iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)?
+            .withRenderingMode(.alwaysOriginal)
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [
+                AppColors.weatherSunIcon,
+                AppColors.weatherCloudIcon,
+                AppColors.weatherPrecipitationIcon
+            ]))
     }
 }
