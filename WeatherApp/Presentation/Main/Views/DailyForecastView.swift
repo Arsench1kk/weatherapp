@@ -6,15 +6,15 @@ final class DailyForecastView: UIView {
     private let containerView = WeatherCardStyle.makeContainerView()
 
     private let headerLabel = AppTextStyle.label(
-        style: UIFont.systemFont(ofSize: 15, weight: .medium),
-        color: AppColors.textSecondary
+        style: AppTextStyle.weatherCardTitle,
+        color: WeatherCardStyle.titleColor
     )
 
     private lazy var headerStack: UIStackView = {
         let iv = UIImageView()
         iv.image = UIImage(systemName: "calendar", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
-            .withRenderingMode(.alwaysOriginal)
-            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconSecondary]))
+            .withRenderingMode(.alwaysTemplate)
+        iv.tintColor = WeatherCardStyle.iconTintColor
         iv.contentMode = .scaleAspectFit
         iv.snp.makeConstraints { $0.size.equalTo(14) }
 
@@ -46,8 +46,8 @@ final class DailyForecastView: UIView {
         let headerWrapper = UIView()
         headerWrapper.addSubview(headerStack)
         headerStack.snp.makeConstraints { make in
-            make.top.bottom.equalToSuperview().inset(12)
-            make.leading.trailing.equalToSuperview().inset(16)
+            make.top.bottom.equalToSuperview().inset(14)
+            make.leading.trailing.equalToSuperview().inset(20)
         }
         
         let mainStack = UIStackView(arrangedSubviews: [
@@ -78,10 +78,10 @@ final class DailyForecastView: UIView {
                 sepWrapper.addSubview(sep)
                 sep.snp.makeConstraints { make in
                     make.top.bottom.equalToSuperview()
-                    make.leading.trailing.equalToSuperview().inset(16)
+                    make.leading.trailing.equalToSuperview().inset(20)
                 }
                 stackView.addArrangedSubview(sepWrapper)
-                sepWrapper.snp.makeConstraints { $0.height.equalTo(1) }
+                sepWrapper.snp.makeConstraints { $0.height.equalTo(1.0 / UIScreen.main.scale) }
             }
         }
     }
@@ -93,7 +93,10 @@ private final class DailyForecastRow: UIView {
 
     private let dayLabel: UILabel = {
         let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textPrimary)
+        l.adjustsFontSizeToFitWidth = true
+        l.minimumScaleFactor = 0.9
         l.setContentHuggingPriority(.required, for: .horizontal)
+        l.setContentCompressionResistancePriority(.required, for: .horizontal)
         return l
     }()
 
@@ -104,9 +107,10 @@ private final class DailyForecastRow: UIView {
     }()
 
     private let minTempLabel: UILabel = {
-        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textSecondary)
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: WeatherCardStyle.secondaryTextColor)
         l.textAlignment = .right
         l.setContentHuggingPriority(.required, for: .horizontal)
+        l.setContentCompressionResistancePriority(.required, for: .horizontal)
         return l
     }()
 
@@ -115,6 +119,7 @@ private final class DailyForecastRow: UIView {
     private let maxTempLabel: UILabel = {
         let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textPrimary)
         l.setContentHuggingPriority(.required, for: .horizontal)
+        l.setContentCompressionResistancePriority(.required, for: .horizontal)
         return l
     }()
 
@@ -158,19 +163,22 @@ private final class DailyForecastRow: UIView {
             dayLabel, iconView, minTempLabel, barContainer, maxTempLabel
         ])
         stack.axis = .horizontal
-        stack.spacing = 8
+        stack.spacing = 10
         stack.alignment = .center
         addSubview(stack)
 
         stack.snp.makeConstraints { make in
-            make.edges.equalToSuperview().inset(UIEdgeInsets(top: 10, left: 16, bottom: 10, right: 16))
+            make.edges.equalToSuperview().inset(UIEdgeInsets(top: 11, left: 20, bottom: 11, right: 20))
         }
 
-        dayLabel.snp.makeConstraints    { $0.width.equalTo(60) }
-        iconView.snp.makeConstraints    { $0.size.equalTo(24) }
+        dayLabel.snp.makeConstraints    { $0.width.equalTo(74) }
+        iconView.snp.makeConstraints    { $0.size.equalTo(26) }
         minTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
         maxTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
-        barContainer.snp.makeConstraints { $0.height.equalTo(4) }
+        barContainer.snp.makeConstraints {
+            $0.height.equalTo(4)
+            $0.width.greaterThanOrEqualTo(40)
+        }
     }
 
     func configure(with model: DailyForecastUIModel) {

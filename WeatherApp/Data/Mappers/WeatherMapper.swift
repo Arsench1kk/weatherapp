@@ -13,7 +13,7 @@ final class WeatherMapper {
         return MainWeatherUIModel(
             cityName: "Текущее местоположение", // One Call API не возвращает имя города, обычно используют reverse geocoding. Оставляем заглушку или можно передавать извне.
             temperature: "\(Int(current.temp))°",
-            description: (current.weather?.first?.description ?? "Нет данных").capitalized,
+            description: sentenceCapitalized(current.weather?.first?.description ?? "Нет данных"),
             minMaxTemp: "Макс.: \(daily.first?.maxTemp ?? Int(current.temp))°, мин.: \(daily.first?.minTemp ?? Int(current.temp))°",
             feelsLike: "\(Int(feelsLike))°",
             feelsLikeDetail: makeFeelsLikeDetail(actual: current.temp, feelsLike: feelsLike),
@@ -171,7 +171,12 @@ final class WeatherMapper {
     private static func buildSummary(current: CurrentWeather) -> String {
         let desc = current.weather?.first?.description ?? "переменная облачность"
         let gust = current.windGust.map { "Порывы ветра до \(Int($0 * 3.6)) км/ч. " } ?? ""
-        return "\(gust)\(desc.capitalized) до конца дня."
+        return "\(gust)\(sentenceCapitalized(desc)) до конца дня."
+    }
+
+    private static func sentenceCapitalized(_ text: String) -> String {
+        guard let first = text.first else { return text }
+        return first.uppercased() + text.dropFirst().lowercased()
     }
 
     private static func isCurrentlyRaining(current: CurrentWeather) -> Bool {

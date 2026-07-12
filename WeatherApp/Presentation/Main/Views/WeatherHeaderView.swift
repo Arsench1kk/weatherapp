@@ -8,14 +8,14 @@ final class WeatherHeaderView: UIView {
     private let locationIconView: UIImageView = {
         let iv = UIImageView()
         iv.image = UIImage(systemName: "location.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))?
-            .withRenderingMode(.alwaysOriginal)
-            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(paletteColors: [AppColors.weatherIconPrimary]))
+            .withRenderingMode(.alwaysTemplate)
+        iv.tintColor = WeatherCardStyle.iconTintColor
         iv.contentMode = .scaleAspectFit
         return iv
     }()
 
     private let locationLabel: UILabel = {
-        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .medium), color: AppColors.textPrimary, alignment: .center)
+        let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 12, weight: .medium), color: WeatherCardStyle.titleColor, alignment: .center)
         l.text = nil
         return l
     }()

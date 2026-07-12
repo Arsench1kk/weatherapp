@@ -72,6 +72,10 @@ final class MainViewController: UIViewController {
         viewModel.viewDidLoad()
     }
 
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        .lightContent
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -94,7 +98,7 @@ final class MainViewController: UIViewController {
     private func setupUI() {
         // scrollView
         view.addSubview(scrollView)
-        scrollView.snp.makeConstraints { $0.edges.equalToSuperview() }
+        scrollView.snp.makeConstraints { $0.edges.equalTo(view.safeAreaLayoutGuide) }
         scrollView.refreshControl = refreshControl
 
         // contentView
@@ -110,13 +114,13 @@ final class MainViewController: UIViewController {
         }
 
         contentStackView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(116)
-            make.leading.trailing.equalToSuperview().inset(18)
-            make.bottom.equalToSuperview().inset(48)
+            make.top.equalToSuperview().offset(12)
+            make.leading.trailing.equalToSuperview().inset(12)
+            make.bottom.equalToSuperview().inset(32)
         }
 
         headerView.snp.makeConstraints { make in
-            make.height.equalTo(259)
+            make.height.equalTo(238)
         }
 
         // Состояния поверх всего
