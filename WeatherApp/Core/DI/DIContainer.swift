@@ -13,6 +13,10 @@ final class DIContainer {
     private lazy var locationManager: LocationManagerProtocol = {
         LocationManager()
     }()
+
+    private lazy var locationNameResolver: LocationNameResolving = {
+        ReverseGeocodingService()
+    }()
     
     // MARK: - Repositories
     
@@ -31,7 +35,8 @@ final class DIContainer {
     private func makeMainViewModel() -> MainViewModel {
         MainViewModel(
             getWeatherUseCase: getWeatherUseCase,
-            locationManager: locationManager
+            locationManager: locationManager,
+            locationNameResolver: locationNameResolver
         )
     }
 

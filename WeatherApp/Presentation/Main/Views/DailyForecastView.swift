@@ -1,6 +1,17 @@
 import UIKit
 import SnapKit
 
+private enum DailyForecastLayout {
+    static let horizontalInset: CGFloat = 20
+    static let headerVerticalInset: CGFloat = 14
+    static let rowVerticalInset: CGFloat = 11
+    static let rowSpacing: CGFloat = 10
+    static let dayWidth: CGFloat = 78
+    static let iconSize: CGFloat = 26
+    static let temperatureWidth: CGFloat = 36
+    static let minimumBarWidth: CGFloat = 36
+}
+
 final class DailyForecastView: UIView {
 
     private let containerView = WeatherCardStyle.makeContainerView()
@@ -46,8 +57,8 @@ final class DailyForecastView: UIView {
         let headerWrapper = UIView()
         headerWrapper.addSubview(headerStack)
         headerStack.snp.makeConstraints { make in
-            make.top.bottom.equalToSuperview().inset(14)
-            make.leading.trailing.equalToSuperview().inset(20)
+            make.top.bottom.equalToSuperview().inset(DailyForecastLayout.headerVerticalInset)
+            make.leading.trailing.equalToSuperview().inset(DailyForecastLayout.horizontalInset)
         }
         
         let mainStack = UIStackView(arrangedSubviews: [
@@ -67,9 +78,12 @@ final class DailyForecastView: UIView {
         headerLabel.text = "ПРОГНОЗ НА \(items.count) ДНЕЙ"
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
+        let normalizer = DailyTemperatureRangeNormalizer(items: items)
+
         for (index, item) in items.enumerated() {
             let row = DailyForecastRow()
-            row.configure(with: item)
+            let range = normalizer.range(for: item)
+            row.configure(with: item, startRatio: range.start, endRatio: range.end)
             stackView.addArrangedSubview(row)
 
             if index < items.count - 1 {
@@ -78,7 +92,7 @@ final class DailyForecastView: UIView {
                 sepWrapper.addSubview(sep)
                 sep.snp.makeConstraints { make in
                     make.top.bottom.equalToSuperview()
-                    make.leading.trailing.equalToSuperview().inset(20)
+                    make.leading.trailing.equalToSuperview().inset(DailyForecastLayout.horizontalInset)
                 }
                 stackView.addArrangedSubview(sepWrapper)
                 sepWrapper.snp.makeConstraints { $0.height.equalTo(1.0 / UIScreen.main.scale) }
@@ -114,7 +128,7 @@ private final class DailyForecastRow: UIView {
         return l
     }()
 
-    private let barContainer = UIView()
+    private let rangeBarView = DailyTemperatureRangeBarView()
 
     private let maxTempLabel: UILabel = {
         let l = AppTextStyle.label(style: UIFont.systemFont(ofSize: 18, weight: .regular), color: AppColors.textPrimary)
@@ -122,70 +136,50 @@ private final class DailyForecastRow: UIView {
         l.setContentCompressionResistancePriority(.required, for: .horizontal)
         return l
     }()
-
-    private var currentModel: DailyForecastUIModel?
-    private let bgLayer = CALayer()
-    private let gradientLayer = CAGradientLayer()
-    private let markerLayer = CALayer()
     
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
-        setupLayers()
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    private func setupLayers() {
-        bgLayer.backgroundColor = AppColors.weatherTemperatureBarTrack.cgColor
-        bgLayer.cornerRadius = 2
-        barContainer.layer.addSublayer(bgLayer)
-
-        gradientLayer.cornerRadius = 2
-        gradientLayer.colors = [
-            AppColors.weatherTemperatureBarStart.cgColor,
-            AppColors.weatherTemperatureBarEnd.cgColor
-        ]
-        gradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
-        gradientLayer.endPoint = CGPoint(x: 1, y: 0.5)
-        barContainer.layer.addSublayer(gradientLayer)
-        
-        markerLayer.backgroundColor = AppColors.weatherTemperatureMarker.cgColor
-        markerLayer.cornerRadius = 4
-        markerLayer.borderWidth = 2
-        markerLayer.borderColor = AppColors.weatherTemperatureMarkerBorder.cgColor
-        markerLayer.isHidden = true
-        barContainer.layer.addSublayer(markerLayer)
-    }
-
     private func setupUI() {
         let stack = UIStackView(arrangedSubviews: [
-            dayLabel, iconView, minTempLabel, barContainer, maxTempLabel
+            dayLabel, iconView, minTempLabel, rangeBarView, maxTempLabel
         ])
         stack.axis = .horizontal
-        stack.spacing = 10
+        stack.spacing = DailyForecastLayout.rowSpacing
         stack.alignment = .center
         addSubview(stack)
 
         stack.snp.makeConstraints { make in
-            make.edges.equalToSuperview().inset(UIEdgeInsets(top: 11, left: 20, bottom: 11, right: 20))
+            make.edges.equalToSuperview().inset(UIEdgeInsets(
+                top: DailyForecastLayout.rowVerticalInset,
+                left: DailyForecastLayout.horizontalInset,
+                bottom: DailyForecastLayout.rowVerticalInset,
+                right: DailyForecastLayout.horizontalInset
+            ))
         }
 
-        dayLabel.snp.makeConstraints    { $0.width.equalTo(74) }
-        iconView.snp.makeConstraints    { $0.size.equalTo(26) }
-        minTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
-        maxTempLabel.snp.makeConstraints { $0.width.equalTo(36) }
-        barContainer.snp.makeConstraints {
-            $0.height.equalTo(4)
-            $0.width.greaterThanOrEqualTo(40)
+        rangeBarView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        rangeBarView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        dayLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.dayWidth) }
+        iconView.snp.makeConstraints { $0.size.equalTo(DailyForecastLayout.iconSize) }
+        minTempLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.temperatureWidth) }
+        maxTempLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.temperatureWidth) }
+        rangeBarView.snp.makeConstraints {
+            $0.height.equalTo(DailyTemperatureRangeBarView.preferredHeight)
+            $0.width.greaterThanOrEqualTo(DailyForecastLayout.minimumBarWidth)
         }
     }
 
-    func configure(with model: DailyForecastUIModel) {
-        currentModel = model
+    func configure(with model: DailyForecastUIModel, startRatio: CGFloat, endRatio: CGFloat) {
         dayLabel.text    = model.dayName
         minTempLabel.text = "\(model.minTemp)°"
         maxTempLabel.text = "\(model.maxTemp)°"
+        rangeBarView.configure(startRatio: startRatio, endRatio: endRatio)
 
         let config = UIImage.SymbolConfiguration(pointSize: 24, weight: .medium)
         iconView.image = UIImage(systemName: model.symbolName, withConfiguration: config)?
@@ -196,39 +190,103 @@ private final class DailyForecastRow: UIView {
                 AppColors.weatherPrecipitationIcon
             ]))
 
+        isAccessibilityElement = true
+        accessibilityLabel = "\(model.dayName), \(model.conditionDescription), минимум \(model.minTemp) градусов, максимум \(model.maxTemp) градусов."
+    }
+}
+
+private struct DailyTemperatureRangeNormalizer {
+    private let globalMin: Double
+    private let globalRange: Double
+    private let isFlatRange: Bool
+
+    init(items: [DailyForecastUIModel]) {
+        let minValue = items.map(\.minTemperatureValue).min() ?? 0
+        let maxValue = items.map(\.maxTemperatureValue).max() ?? minValue
+        globalMin = minValue
+        isFlatRange = maxValue == minValue
+        globalRange = max(maxValue - minValue, 1)
+    }
+
+    func range(for item: DailyForecastUIModel) -> (start: CGFloat, end: CGFloat) {
+        if isFlatRange {
+            return (0.5, 0.5)
+        }
+
+        let start = (item.minTemperatureValue - globalMin) / globalRange
+        let end = (item.maxTemperatureValue - globalMin) / globalRange
+
+        let clampedStart = CGFloat(min(max(start, 0), 1))
+        let clampedEnd = CGFloat(min(max(end, 0), 1))
+
+        if clampedEnd > clampedStart {
+            return (clampedStart, clampedEnd)
+        }
+
+        let center = min(max((clampedStart + clampedEnd) / 2, 0), 1)
+        return (center, center)
+    }
+}
+
+private final class DailyTemperatureRangeBarView: UIView {
+    static let preferredHeight: CGFloat = 6
+
+    private let minimumActiveWidth: CGFloat = 7
+    private var startRatio: CGFloat = 0
+    private var endRatio: CGFloat = 0
+
+    private let trackLayer = CALayer()
+    private let activeLayer = CAGradientLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        isAccessibilityElement = false
+        layer.addSublayer(trackLayer)
+        layer.addSublayer(activeLayer)
+        activeLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        activeLayer.endPoint = CGPoint(x: 1, y: 0.5)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(startRatio: CGFloat, endRatio: CGFloat) {
+        self.startRatio = min(max(startRatio, 0), 1)
+        self.endRatio = min(max(endRatio, 0), 1)
         setNeedsLayout()
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        guard let model = currentModel else { return }
-        
-        let width = barContainer.bounds.width
-        guard width > 0 else { return }
 
-        let globalRange = Double(model.globalMax - model.globalMin)
-        guard globalRange > 0 else { return }
+        let barHeight = min(Self.preferredHeight, bounds.height)
+        let y = (bounds.height - barHeight) / 2
+        let trackFrame = CGRect(x: 0, y: y, width: bounds.width, height: barHeight)
 
-        let startRatio = CGFloat(model.minTemp - model.globalMin) / CGFloat(globalRange)
-        let endRatio   = CGFloat(model.maxTemp - model.globalMin) / CGFloat(globalRange)
+        trackLayer.frame = trackFrame
+        trackLayer.cornerRadius = barHeight / 2
+        trackLayer.backgroundColor = AppColors.weatherTemperatureBarTrack.cgColor
 
-        let h: CGFloat = 4
-        
-        bgLayer.frame = CGRect(x: 0, y: 0, width: width, height: h)
+        activeLayer.colors = [
+            AppColors.weatherTemperatureBarStart.cgColor,
+            AppColors.weatherTemperatureBarEnd.cgColor
+        ]
+        activeLayer.cornerRadius = barHeight / 2
+        activeLayer.masksToBounds = true
+        activeLayer.frame = activeFrame(in: trackFrame)
+    }
 
-        let barX = startRatio * width
-        let barW = max((endRatio - startRatio) * width, 8)
-        gradientLayer.frame = CGRect(x: barX, y: 0, width: barW, height: h)
-        
-        if model.dayName == "Сегодня" {
-            markerLayer.isHidden = false
-            let markerSize: CGFloat = 8
-            // Ставим маркер примерно в центр диапазона так как точную текущую температуру передать нельзя (ограничение моделей)
-            let currentRatio = startRatio + (endRatio - startRatio) / 2
-            let markerX = currentRatio * width - markerSize / 2
-            markerLayer.frame = CGRect(x: markerX, y: -2, width: markerSize, height: markerSize)
-        } else {
-            markerLayer.isHidden = true
-        }
+    private func activeFrame(in trackFrame: CGRect) -> CGRect {
+        guard trackFrame.width > 0 else { return .zero }
+
+        let orderedStart = min(startRatio, endRatio)
+        let orderedEnd = max(startRatio, endRatio)
+        let rawX = orderedStart * trackFrame.width
+        let rawWidth = (orderedEnd - orderedStart) * trackFrame.width
+        let width = min(max(rawWidth, minimumActiveWidth), trackFrame.width)
+        let centeredFallbackX = rawX - (width - rawWidth) / 2
+        let x = min(max(centeredFallbackX, 0), trackFrame.width - width)
+
+        return CGRect(x: trackFrame.minX + x, y: trackFrame.minY, width: width, height: trackFrame.height)
     }
 }

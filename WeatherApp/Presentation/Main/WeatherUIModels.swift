@@ -36,16 +36,16 @@ struct HourlyForecastUIModel {
     let isSpecial: Bool     // true для заката/восхода
 }
 
-// MARK: - Дневной прогноз (10 дней)
+// MARK: - Дневной прогноз
 
 struct DailyForecastUIModel {
     let dayName: String     // "Сегодня", "Сб", "Вс"
     let symbolName: String  // SF Symbol
+    let conditionDescription: String
     let minTemp: Int        // -2
     let maxTemp: Int        // 9
-    // Для температурной шкалы:
-    let globalMin: Int      // Глобальный минимум по всем 10 дням
-    let globalMax: Int      // Глобальный максимум по всем 10 дням
+    let minTemperatureValue: Double
+    let maxTemperatureValue: Double
 }
 
 // MARK: - Время суток (для градиента)

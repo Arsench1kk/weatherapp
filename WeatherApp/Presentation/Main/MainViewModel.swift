@@ -11,16 +11,20 @@ final class MainViewModel {
 
     private let getWeatherUseCase: GetWeatherUseCaseProtocol
     private var locationManager: LocationManagerProtocol
+    private let locationNameResolver: LocationNameResolving
     private var weatherTask: Task<Void, Never>?
+    private let fallbackLocationName = "Текущее местоположение"
 
     // MARK: - Init
 
     init(
         getWeatherUseCase: GetWeatherUseCaseProtocol,
-        locationManager: LocationManagerProtocol
+        locationManager: LocationManagerProtocol,
+        locationNameResolver: LocationNameResolving
     ) {
         self.getWeatherUseCase = getWeatherUseCase
         self.locationManager = locationManager
+        self.locationNameResolver = locationNameResolver
         setupLocationCallbacks()
     }
 
@@ -73,13 +77,15 @@ final class MainViewModel {
             guard let self else { return }
 
             do {
+                async let resolvedLocationName = self.locationNameResolver.resolveName(for: location)
                 let response = try await self.getWeatherUseCase.execute(
                     lat: location.coordinate.latitude,
                     lon: location.coordinate.longitude
                 )
                 guard !Task.isCancelled else { return }
 
-                let uiModel = WeatherMapper.map(response: response)
+                let locationName = await resolvedLocationName ?? self.fallbackLocationName
+                let uiModel = WeatherMapper.map(response: response, locationName: locationName)
                 self.onStateChanged?(.loaded(uiModel))
             } catch is CancellationError {
                 return
