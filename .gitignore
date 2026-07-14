@@ -31,6 +31,6 @@ DerivedData/
 .swiftpm/
 
 # API Keys — НИКОГДА не пушить!
-Config.xcconfig
+
 Secrets.swift
 APIKeys.swift
