@@ -4,11 +4,11 @@ import SnapKit
 final class WeatherSummaryCard: UIView {
 
     private let label: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 16)
-        l.textColor = AppColors.textPrimary
-        l.numberOfLines = 0
-        return l
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 16)
+        label.textColor = AppColors.textPrimary
+        label.numberOfLines = 0
+        return label
     }()
 
     override init(frame: CGRect) {

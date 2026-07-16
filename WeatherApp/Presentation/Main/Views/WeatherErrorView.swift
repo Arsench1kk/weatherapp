@@ -6,42 +6,42 @@ final class WeatherErrorView: UIView {
     var onRetry: (() -> Void)?
 
     private let iconLabel: UILabel = {
-        let l = UILabel()
-        l.text = "⚠️"
-        l.font = .systemFont(ofSize: 48)
-        l.textAlignment = .center
-        return l
+        let label = UILabel()
+        label.text = "⚠️"
+        label.font = .systemFont(ofSize: 48)
+        label.textAlignment = .center
+        return label
     }()
 
     private let messageLabel: UILabel = {
-        let l = UILabel()
-        l.font = .systemFont(ofSize: 17)
-        l.textColor = AppColors.textPrimary
-        l.textAlignment = .center
-        l.numberOfLines = 0
-        return l
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 17)
+        label.textColor = AppColors.textPrimary
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
     }()
 
     private lazy var retryButton: UIButton = {
-        let btn = UIButton(type: .system)
-        btn.setTitle("Повторить", for: .normal)
-        btn.setTitleColor(AppColors.textPrimary, for: .normal)
-        btn.backgroundColor = AppColors.weatherErrorButtonBackground
-        btn.layer.cornerRadius = 12
-        btn.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
-        btn.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
-        return btn
+        let button = UIButton(type: .system)
+        button.setTitle("Повторить", for: .normal)
+        button.setTitleColor(AppColors.textPrimary, for: .normal)
+        button.backgroundColor = AppColors.weatherErrorButtonBackground
+        button.layer.cornerRadius = 12
+        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
+        button.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
+        return button
     }()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear
-        let stack = UIStackView(arrangedSubviews: [iconLabel, messageLabel, retryButton])
-        stack.axis = .vertical
-        stack.spacing = 16
-        stack.alignment = .center
-        addSubview(stack)
-        stack.snp.makeConstraints { make in
+        let stackView = UIStackView(arrangedSubviews: [iconLabel, messageLabel, retryButton])
+        stackView.axis = .vertical
+        stackView.spacing = 16
+        stackView.alignment = .center
+        addSubview(stackView)
+        stackView.snp.makeConstraints { make in
             make.center.equalToSuperview()
             make.leading.trailing.equalToSuperview().inset(32)
         }
