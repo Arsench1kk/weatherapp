@@ -27,6 +27,15 @@ struct MainWeatherUIModel {
     let isRaining: Bool          // Для выбора фона
 }
 
+struct WeatherTheme: Equatable {
+    let timeOfDay: TimeOfDay
+    let isRaining: Bool
+
+    static var current: WeatherTheme {
+        WeatherTheme(timeOfDay: .current(), isRaining: false)
+    }
+}
+
 // MARK: - Почасовой прогноз
 
 struct HourlyForecastUIModel {

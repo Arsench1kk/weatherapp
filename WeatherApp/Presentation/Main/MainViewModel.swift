@@ -3,6 +3,15 @@ import CoreLocation
 
 final class MainViewModel {
 
+    private enum FetchPresentationMode {
+        case initial
+        case refresh
+
+        var preservesContentOnError: Bool {
+            self == .refresh
+        }
+    }
+
     // MARK: - Callback для ViewController
 
     var onStateChanged: ((MainScreenState) -> Void)?
@@ -12,7 +21,9 @@ final class MainViewModel {
     private let getWeatherUseCase: GetWeatherUseCaseProtocol
     private var locationManager: LocationManagerProtocol
     private let locationNameResolver: LocationNameResolving
+    private let source: WeatherLocationSource
     private var weatherTask: Task<Void, Never>?
+    private var pendingPresentationMode: FetchPresentationMode = .initial
     private let fallbackLocationName = "Текущее местоположение"
 
     // MARK: - Init
@@ -20,12 +31,17 @@ final class MainViewModel {
     init(
         getWeatherUseCase: GetWeatherUseCaseProtocol,
         locationManager: LocationManagerProtocol,
-        locationNameResolver: LocationNameResolving
+        locationNameResolver: LocationNameResolving,
+        source: WeatherLocationSource = .currentLocation
     ) {
         self.getWeatherUseCase = getWeatherUseCase
         self.locationManager = locationManager
         self.locationNameResolver = locationNameResolver
-        setupLocationCallbacks()
+        self.source = source
+
+        if case .currentLocation = source {
+            setupLocationCallbacks()
+        }
     }
 
     deinit {
@@ -35,42 +51,58 @@ final class MainViewModel {
     // MARK: - Public Interface
 
     func viewDidLoad() {
-        fetchWeather()
+        fetchWeather(presentationMode: .initial)
     }
 
     func refresh() {
-        // Pull-to-refresh — не показываем .loading, данные уже есть
-        fetchWeather(showLoading: false)
+        fetchWeather(presentationMode: .refresh)
     }
 
     // MARK: - Private
 
-    private func fetchWeather(showLoading: Bool = true) {
+    private func fetchWeather(presentationMode: FetchPresentationMode) {
         weatherTask?.cancel()
+        pendingPresentationMode = presentationMode
 
-        if showLoading {
+        if presentationMode == .initial {
             onStateChanged?(.loading)
         }
 
-        locationManager.requestPermission()
+        switch source {
+        case .currentLocation:
+            locationManager.requestPermission()
+
+        case .fixedCity(let city):
+            loadWeather(
+                lat: city.latitude,
+                lon: city.longitude,
+                locationName: city.name,
+                presentationMode: presentationMode
+            )
+        }
     }
 
     private func setupLocationCallbacks() {
         locationManager.onLocationUpdate = { [weak self] location in
             Task { @MainActor in
-                self?.loadWeather(for: location)
+                guard let self else { return }
+                self.loadWeather(for: location, presentationMode: self.pendingPresentationMode)
             }
         }
 
         locationManager.onError = { [weak self] error in
             Task { @MainActor in
+                guard let self else { return }
                 let message = error.errorDescription ?? "Ошибка геолокации"
-                self?.onStateChanged?(.error(message))
+                self.onStateChanged?(.error(
+                    message,
+                    preservesContent: self.pendingPresentationMode.preservesContentOnError
+                ))
             }
         }
     }
 
-    private func loadWeather(for location: CLLocation) {
+    private func loadWeather(for location: CLLocation, presentationMode: FetchPresentationMode) {
         weatherTask?.cancel()
 
         weatherTask = Task { @MainActor [weak self] in
@@ -85,16 +117,64 @@ final class MainViewModel {
                 guard !Task.isCancelled else { return }
 
                 let locationName = await resolvedLocationName ?? self.fallbackLocationName
-                let uiModel = WeatherMapper.map(response: response, locationName: locationName)
-                self.onStateChanged?(.loaded(uiModel))
+                self.applyWeatherResponse(
+                    response,
+                    locationName: locationName,
+                    presentationMode: presentationMode
+                )
             } catch is CancellationError {
                 return
             } catch {
                 guard !Task.isCancelled else { return }
                 let message = (error as? LocalizedError)?.errorDescription
                     ?? error.localizedDescription
-                self.onStateChanged?(.error(message))
+                self.onStateChanged?(.error(
+                    message,
+                    preservesContent: presentationMode.preservesContentOnError
+                ))
             }
         }
+    }
+
+    private func loadWeather(
+        lat: Double,
+        lon: Double,
+        locationName: String,
+        presentationMode: FetchPresentationMode
+    ) {
+        weatherTask?.cancel()
+
+        weatherTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            do {
+                let response = try await self.getWeatherUseCase.execute(lat: lat, lon: lon)
+                guard !Task.isCancelled else { return }
+                self.applyWeatherResponse(
+                    response,
+                    locationName: locationName,
+                    presentationMode: presentationMode
+                )
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                let message = (error as? LocalizedError)?.errorDescription
+                    ?? error.localizedDescription
+                self.onStateChanged?(.error(
+                    message,
+                    preservesContent: presentationMode.preservesContentOnError
+                ))
+            }
+        }
+    }
+
+    private func applyWeatherResponse(
+        _ response: OneCallResponse,
+        locationName: String,
+        presentationMode: FetchPresentationMode
+    ) {
+        let uiModel = WeatherMapper.map(response: response, locationName: locationName)
+        onStateChanged?(.loaded(uiModel))
     }
 }
