@@ -5,6 +5,7 @@ import MapKit
 final class CitySearchViewModel: NSObject {
 
     var onStateChanged: ((CitySearchState) -> Void)?
+    var onCitySelected: ((CitySelection) -> Void)?
 
     private let savedCitiesStore: SavedCitiesStoreProtocol
     private let getWeatherUseCase: GetWeatherUseCaseProtocol
@@ -81,16 +82,17 @@ final class CitySearchViewModel: NSObject {
         emitState()
     }
 
-    func selectSavedCity(at index: Int) -> CitySelection? {
-        guard cityPreviews.indices.contains(index) else { return nil }
+    func selectSavedCity(at index: Int) {
+        guard cityPreviews.indices.contains(index) else { return }
         let preview = cityPreviews[index]
 
         if preview.isCurrentLocation {
-            return .currentLocation
+            onCitySelected?(.currentLocation)
+            return
         }
 
-        guard let city = preview.city else { return nil }
-        return .savedCity(city)
+        guard let city = preview.city else { return }
+        onCitySelected?(.savedCity(city))
     }
 
     func canDeleteCity(at index: Int) -> Bool {
@@ -105,11 +107,8 @@ final class CitySearchViewModel: NSObject {
         loadWeatherPreviews()
     }
 
-    func selectSearchResult(at index: Int, completion: @escaping (CitySelection?) -> Void) {
-        guard completions.indices.contains(index) else {
-            completion(nil)
-            return
-        }
+    func selectSearchResult(at index: Int) {
+        guard completions.indices.contains(index) else { return }
 
         let selectedCompletion = completions[index]
         searchResultsState = .searching
@@ -133,11 +132,10 @@ final class CitySearchViewModel: NSObject {
                 self.clearSearch()
                 self.reloadSavedCities()
                 self.loadWeatherPreviews()
-                completion(.savedCity(city))
+                self.onCitySelected?(.savedCity(city))
             } catch {
                 self.searchResultsState = .error("Не удалось получить координаты города")
                 self.emitState()
-                completion(nil)
             }
         }
     }
@@ -263,11 +261,15 @@ final class CitySearchViewModel: NSObject {
     }
 
     private func makeLoadedPreviewState(from response: OneCallResponse) -> CityWeatherPreviewState {
+        let formatter = WeatherFormattingService()
         let day = response.daily.first
-        let highLow = "H:\(Int(day?.temp.max ?? response.current.temp))°  L:\(Int(day?.temp.min ?? response.current.temp))°"
+        let highLow = formatter.highLowText(
+            highCelsius: day?.temp.max ?? response.current.temp,
+            lowCelsius: day?.temp.min ?? response.current.temp
+        )
 
         return .loaded(
-            temperature: "\(Int(response.current.temp))°",
+            temperature: formatter.temperature(response.current.temp),
             description: sentenceCapitalized(response.current.weather?.first?.description ?? "Нет данных"),
             symbolName: WeatherMapper.sfSymbol(for: response.current.weather?.first?.icon ?? "01d"),
             highLow: highLow
@@ -287,12 +289,7 @@ final class CitySearchViewModel: NSObject {
     }
 
     private func makeLocalTimeText(timezoneOffset: Int) -> String {
-        let localDate = Date(timeIntervalSince1970: Date().timeIntervalSince1970 + TimeInterval(timezoneOffset))
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "h:mm a"
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: localDate)
+        WeatherFormattingService().localTime(timezoneOffset: timezoneOffset)
     }
 
     private func resolveMapItem(for completion: MKLocalSearchCompletion) async throws -> MKMapItem {
