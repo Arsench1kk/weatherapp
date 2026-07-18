@@ -121,7 +121,7 @@ private final class WeatherHourlySummaryCell: UIView {
 
     func configure(with model: HourlyForecastUIModel) {
         timeLabel.text = model.time
-        temperatureLabel.text = model.isSpecial ? "Закат" : model.temperature
+        temperatureLabel.text = model.temperature
         temperatureLabel.font = model.isSpecial
             ? UIFont.systemFont(ofSize: 12, weight: .regular)
             : UIFont.systemFont(ofSize: 16, weight: .regular)
