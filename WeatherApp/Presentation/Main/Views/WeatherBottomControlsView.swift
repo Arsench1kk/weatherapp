@@ -7,8 +7,8 @@ final class WeatherBottomControlsView: UIView {
     var onPagerTap: (() -> Void)?
     var onListTap: (() -> Void)?
 
-    private let margin: CGFloat = 20
-    private let iconButtonSize: CGFloat = 54
+    private let margin: CGFloat = 18
+    private let iconButtonSize: CGFloat = 44
 
     private lazy var mapButton = GlassControlButton(symbolName: "map")
     private lazy var listButton = GlassControlButton(symbolName: "list.bullet")
@@ -23,8 +23,8 @@ final class WeatherBottomControlsView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configurePager(isCurrentLocation: Bool) {
-        pagerButton.configure(isCurrentLocation: isCurrentLocation)
+    func configurePager(currentPage: Int, totalPages: Int) {
+        pagerButton.configure(currentPage: currentPage, totalPages: totalPages)
     }
 
     private func setupUI() {
@@ -41,7 +41,10 @@ final class WeatherBottomControlsView: UIView {
         pagerButton.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.centerY.equalToSuperview()
-            make.width.equalTo(106)
+            make.leading.greaterThanOrEqualTo(mapButton.snp.trailing).offset(10)
+            make.trailing.lessThanOrEqualTo(listButton.snp.leading).offset(-10)
+            make.width.greaterThanOrEqualTo(64)
+            make.width.lessThanOrEqualTo(180)
             make.height.equalTo(iconButtonSize)
         }
 
@@ -57,14 +60,17 @@ final class WeatherBottomControlsView: UIView {
     }
 
     @objc private func handleMapTap() {
+        AppHaptics.lightImpact()
         onMapTap?()
     }
 
     @objc private func handlePagerTap() {
+        AppHaptics.lightImpact()
         onPagerTap?()
     }
 
     @objc private func handleListTap() {
+        AppHaptics.lightImpact()
         onListTap?()
     }
 }
@@ -73,7 +79,7 @@ private class GlassControlButton: UIButton {
 
     private let materialView = UIVisualEffectView(effect: nil)
     private let overlayView = UIView()
-    private let cornerRadius: CGFloat = 23
+    private let cornerRadius: CGFloat = 22
 
     init(symbolName: String) {
         super.init(frame: .zero)
@@ -93,28 +99,28 @@ private class GlassControlButton: UIButton {
 
     private func setupUI() {
         backgroundColor = .clear
-        tintColor = AppColors.textPrimary.withAlphaComponent(0.82)
+        tintColor = AppColors.textPrimary.withAlphaComponent(0.72)
         setPreferredSymbolConfiguration(
-            UIImage.SymbolConfiguration(pointSize: 25, weight: .regular),
+            UIImage.SymbolConfiguration(pointSize: 22, weight: .regular),
             forImageIn: .normal
         )
         imageView?.contentMode = .scaleAspectFit
         layer.cornerRadius = cornerRadius
         layer.cornerCurve = .continuous
         layer.borderWidth = 1.0 / UIScreen.main.scale
-        layer.borderColor = UIColor.white.withAlphaComponent(0.10).cgColor
+        layer.borderColor = UIColor.white.withAlphaComponent(0.08).cgColor
         clipsToBounds = true
 
         if #available(iOS 26.0, *) {
             let glassEffect = UIGlassEffect(style: .clear)
-            glassEffect.tintColor = UIColor.black.withAlphaComponent(0.22)
+            glassEffect.tintColor = UIColor.black.withAlphaComponent(0.16)
             glassEffect.isInteractive = true
             materialView.effect = glassEffect
         } else {
             materialView.effect = UIBlurEffect(style: .systemThinMaterialDark)
         }
 
-        overlayView.backgroundColor = UIColor.black.withAlphaComponent(0.16)
+        overlayView.backgroundColor = UIColor.black.withAlphaComponent(0.10)
         overlayView.isUserInteractionEnabled = false
         materialView.isUserInteractionEnabled = false
         insertSubview(materialView, at: 0)
@@ -124,6 +130,15 @@ private class GlassControlButton: UIButton {
 
 private final class GlassPagerButton: GlassControlButton {
 
+    private enum Metrics {
+        static let horizontalInset: CGFloat = 13
+        static let itemSpacing: CGFloat = 12
+        static let locationSize: CGFloat = 17
+        static let dotSize: CGFloat = 8
+        static let height: CGFloat = 44
+        static let maximumWidth: CGFloat = 180
+    }
+
     private let locationImageView: UIImageView = {
         let imageView = UIImageView(image: UIImage(systemName: "location.fill"))
         imageView.tintColor = AppColors.textPrimary
@@ -131,56 +146,145 @@ private final class GlassPagerButton: GlassControlButton {
         return imageView
     }()
 
-    private let firstDotView = UIView()
-    private let secondDotView = UIView()
+    private let indicatorStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = Metrics.itemSpacing
+        stackView.alignment = .center
+        stackView.isUserInteractionEnabled = false
+        return stackView
+    }()
+    private let indicatorScrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.isScrollEnabled = false
+        scrollView.isUserInteractionEnabled = false
+        scrollView.clipsToBounds = true
+        return scrollView
+    }()
+    private var dotViews: [UIView] = []
+    private var totalPages = 1
+    private var currentPage = 0
 
     init() {
         super.init(symbolName: "")
         setImage(nil, for: .normal)
         setupPagerUI()
-        configure(isCurrentLocation: true)
+        configure(currentPage: 0, totalPages: 1)
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(isCurrentLocation: Bool) {
-        locationImageView.tintColor = AppColors.textPrimary.withAlphaComponent(isCurrentLocation ? 1.0 : 0.38)
-        firstDotView.backgroundColor = AppColors.textPrimary.withAlphaComponent(isCurrentLocation ? 0.32 : 0.86)
-        secondDotView.backgroundColor = AppColors.textPrimary.withAlphaComponent(0.32)
+    func configure(currentPage: Int, totalPages: Int) {
+        let safeTotalPages = max(totalPages, 1)
+        let safeCurrentPage = min(max(currentPage, 0), safeTotalPages - 1)
+
+        self.totalPages = safeTotalPages
+        self.currentPage = safeCurrentPage
+
+        rebuildDotsIfNeeded(savedCityCount: safeTotalPages - 1)
+        applyActiveIndicator()
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
+    }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: min(indicatorContentWidth + Metrics.horizontalInset * 2, Metrics.maximumWidth), height: Metrics.height)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateScrollInsets()
+        scrollActiveIndicatorIntoView()
     }
 
     private func setupPagerUI() {
-        layer.cornerRadius = 23
+        layer.cornerRadius = 22
+        setContentHuggingPriority(.required, for: .horizontal)
+        setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
 
-        [firstDotView, secondDotView].forEach { dotView in
-            dotView.layer.cornerRadius = 4
+        indicatorStackView.addArrangedSubview(locationImageView)
+        addSubview(indicatorScrollView)
+        indicatorScrollView.addSubview(indicatorStackView)
+
+        indicatorScrollView.snp.makeConstraints { make in
+            make.centerY.equalToSuperview()
+            make.leading.trailing.equalToSuperview().inset(Metrics.horizontalInset)
+            make.height.equalTo(max(Metrics.locationSize, Metrics.dotSize))
         }
 
-        let stackView = UIStackView(arrangedSubviews: [
-            locationImageView,
-            firstDotView,
-            secondDotView
-        ])
-        stackView.axis = .horizontal
-        stackView.spacing = 13
-        stackView.alignment = .center
-        stackView.isUserInteractionEnabled = false
-
-        addSubview(stackView)
-        stackView.snp.makeConstraints { make in
-            make.center.equalToSuperview()
+        indicatorStackView.snp.makeConstraints { make in
+            make.edges.equalTo(indicatorScrollView.contentLayoutGuide)
+            make.height.equalTo(indicatorScrollView.frameLayoutGuide)
         }
 
         locationImageView.snp.makeConstraints { make in
-            make.size.equalTo(18)
+            make.size.equalTo(Metrics.locationSize)
+        }
+    }
+
+    private func rebuildDotsIfNeeded(savedCityCount: Int) {
+        guard dotViews.count != savedCityCount else { return }
+
+        dotViews.forEach { dotView in
+            indicatorStackView.removeArrangedSubview(dotView)
+            dotView.removeFromSuperview()
         }
 
-        [firstDotView, secondDotView].forEach { dotView in
+        dotViews = (0..<savedCityCount).map { _ in
+            let dotView = UIView()
+            dotView.layer.cornerRadius = Metrics.dotSize / 2
             dotView.snp.makeConstraints { make in
-                make.size.equalTo(8)
+                make.size.equalTo(Metrics.dotSize)
             }
+            indicatorStackView.addArrangedSubview(dotView)
+            return dotView
         }
+    }
+
+    private func applyActiveIndicator() {
+        locationImageView.tintColor = AppColors.textPrimary.withAlphaComponent(currentPage == 0 ? 0.78 : 0.34)
+
+        for (index, dotView) in dotViews.enumerated() {
+            let pageIndex = index + 1
+            dotView.backgroundColor = AppColors.textPrimary.withAlphaComponent(pageIndex == currentPage ? 0.74 : 0.30)
+        }
+    }
+
+    private var indicatorContentWidth: CGFloat {
+        let savedCityCount = max(totalPages - 1, 0)
+        let itemCount = savedCityCount + 1
+
+        return Metrics.locationSize
+            + CGFloat(savedCityCount) * Metrics.dotSize
+            + CGFloat(max(itemCount - 1, 0)) * Metrics.itemSpacing
+    }
+
+    private func updateScrollInsets() {
+        let availableWidth = indicatorScrollView.bounds.width
+        let horizontalInset = max((availableWidth - indicatorContentWidth) / 2, 0)
+        indicatorScrollView.contentInset = UIEdgeInsets(
+            top: 0,
+            left: horizontalInset,
+            bottom: 0,
+            right: horizontalInset
+        )
+    }
+
+    private func scrollActiveIndicatorIntoView() {
+        guard indicatorScrollView.bounds.width > 0 else { return }
+        let activeView = currentPage == 0 ? locationImageView : dotViews[safe: currentPage - 1]
+        guard let activeView else { return }
+        let targetFrame = activeView.convert(activeView.bounds, to: indicatorScrollView)
+        indicatorScrollView.scrollRectToVisible(targetFrame.insetBy(dx: -Metrics.itemSpacing, dy: 0), animated: false)
+    }
+}
+
+private extension Array {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
