@@ -26,11 +26,11 @@ final class CityWeatherCardBackgroundView: UIView {
             isRaining: theme.isRaining
         )
         let cardColors = baseColors.map { color in
-            Self.mixedColor(color, with: .black, amount: theme.timeOfDay == .night ? 0.28 : 0.36)
+            Self.mixedColor(color, with: .black, amount: theme.timeOfDay == .night ? 0.26 : 0.32)
         }
 
-        gradientLayer.colors = cardColors.map { $0.withAlphaComponent(0.88).cgColor }
-        cloudLayer.opacity = theme.timeOfDay == .day ? 0.42 : 0.58
+        gradientLayer.colors = cardColors.map { $0.withAlphaComponent(0.92).cgColor }
+        cloudLayer.opacity = theme.timeOfDay == .day ? 0.34 : 0.48
         cloudLayer.colors = Self.cloudColors(for: theme)
     }
 
