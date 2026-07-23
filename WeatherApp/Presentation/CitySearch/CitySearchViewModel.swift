@@ -1,8 +1,7 @@
 import Foundation
 import CoreLocation
-import MapKit
 
-final class CitySearchViewModel: NSObject {
+final class CitySearchViewModel {
 
     var onStateChanged: ((CitySearchState) -> Void)?
     var onCitySelected: ((CitySelection) -> Void)?
@@ -11,12 +10,13 @@ final class CitySearchViewModel: NSObject {
     private let getWeatherUseCase: GetWeatherUseCaseProtocol
     private let currentLocationProvider: CurrentLocationProviderProtocol
     private let locationNameResolver: LocationNameResolving
-    private let completer = MKLocalSearchCompleter()
+    private let citySearchClient: CitySearchClientProtocol
 
     private var savedCities: [SavedCity] = []
     private var cityPreviews: [CityWeatherPreviewUIModel] = []
     private var searchResultsState: CitySearchResultsState = .emptyQuery
-    private var completions: [MKLocalSearchCompletion] = []
+    private var completions: [CitySearchCompletionModel] = []
+    private var activeQuery = ""
     private var debounceTask: Task<Void, Never>?
     private var previewTasks: [Task<Void, Never>] = []
     private var selectionTask: Task<Void, Never>?
@@ -25,16 +25,14 @@ final class CitySearchViewModel: NSObject {
         savedCitiesStore: SavedCitiesStoreProtocol,
         getWeatherUseCase: GetWeatherUseCaseProtocol,
         currentLocationProvider: CurrentLocationProviderProtocol,
-        locationNameResolver: LocationNameResolving
+        locationNameResolver: LocationNameResolving,
+        citySearchClient: CitySearchClientProtocol
     ) {
         self.savedCitiesStore = savedCitiesStore
         self.getWeatherUseCase = getWeatherUseCase
         self.currentLocationProvider = currentLocationProvider
         self.locationNameResolver = locationNameResolver
-        super.init()
-
-        completer.delegate = self
-        completer.resultTypes = .address
+        self.citySearchClient = citySearchClient
     }
 
     deinit {
@@ -51,11 +49,12 @@ final class CitySearchViewModel: NSObject {
     func updateQuery(_ query: String) {
         debounceTask?.cancel()
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        activeQuery = trimmedQuery
 
         guard !trimmedQuery.isEmpty else {
             completions = []
             searchResultsState = .emptyQuery
-            completer.queryFragment = ""
+            citySearchClient.clear()
             emitState()
             return
         }
@@ -67,8 +66,22 @@ final class CitySearchViewModel: NSObject {
             do {
                 try await Task.sleep(nanoseconds: 350_000_000)
                 guard !Task.isCancelled else { return }
-                self?.completer.queryFragment = trimmedQuery
+                guard let self, self.activeQuery == trimmedQuery else { return }
+
+                let completions = try await self.citySearchClient.searchCompletions(for: trimmedQuery)
+                guard !Task.isCancelled,
+                      self.activeQuery == trimmedQuery else {
+                    return
+                }
+
+                self.applySearchCompletions(completions)
+            } catch is CancellationError {
+                return
             } catch {
+                guard let self, self.activeQuery == trimmedQuery else { return }
+                self.completions = []
+                self.searchResultsState = .error("Не удалось выполнить поиск")
+                self.emitState()
                 return
             }
         }
@@ -76,8 +89,9 @@ final class CitySearchViewModel: NSObject {
 
     func clearSearch() {
         debounceTask?.cancel()
+        activeQuery = ""
         completions = []
-        completer.queryFragment = ""
+        citySearchClient.clear()
         searchResultsState = .emptyQuery
         emitState()
     }
@@ -119,25 +133,37 @@ final class CitySearchViewModel: NSObject {
             guard let self else { return }
 
             do {
-                let mapItem = try await self.resolveMapItem(for: selectedCompletion)
-                let placemark = mapItem.placemark
-                let city = SavedCity(
-                    name: self.makeCityName(from: placemark, fallback: selectedCompletion.title),
-                    subtitle: self.makeSubtitle(from: placemark, fallback: selectedCompletion.subtitle),
-                    latitude: placemark.coordinate.latitude,
-                    longitude: placemark.coordinate.longitude
-                )
+                let city = try await self.citySearchClient.resolve(selectedCompletion)
 
-                self.savedCitiesStore.addCity(city)
+                let selectedCity: SavedCity
+                switch self.savedCitiesStore.addCity(city) {
+                case .added(let city), .existing(let city):
+                    selectedCity = city
+                case .failed:
+                    self.searchResultsState = .error("Не удалось сохранить город")
+                    self.emitState()
+                    return
+                }
+
                 self.clearSearch()
                 self.reloadSavedCities()
                 self.loadWeatherPreviews()
-                self.onCitySelected?(.savedCity(city))
+                self.onCitySelected?(.savedCity(selectedCity))
             } catch {
                 self.searchResultsState = .error("Не удалось получить координаты города")
                 self.emitState()
             }
         }
+    }
+
+    private func applySearchCompletions(_ completions: [CitySearchCompletionModel]) {
+        self.completions = completions
+        let suggestions = completions.map {
+            CitySearchSuggestionUIModel(title: $0.title, subtitle: $0.subtitle)
+        }
+
+        searchResultsState = suggestions.isEmpty ? .noResults : .results(suggestions)
+        emitState()
     }
 
     private func reloadSavedCities() {
@@ -201,6 +227,8 @@ final class CitySearchViewModel: NSObject {
                     theme: self.makeWeatherTheme(from: response),
                     state: self.makeLoadedPreviewState(from: response)
                 )
+            } catch is CancellationError {
+                return
             } catch {
                 guard !Task.isCancelled else { return }
                 self.updatePreview(
@@ -225,10 +253,15 @@ final class CitySearchViewModel: NSObject {
                 guard !Task.isCancelled else { return }
                 self.updatePreview(
                     id: city.id,
-                    subtitle: self.makeLocalTimeText(timezoneOffset: response.timezoneOffset),
+                    subtitle: self.makeLocalTimeText(
+                        timezoneIdentifier: response.timezone,
+                        timezoneOffset: response.timezoneOffset
+                    ),
                     theme: self.makeWeatherTheme(from: response),
                     state: self.makeLoadedPreviewState(from: response)
                 )
+            } catch is CancellationError {
+                return
             } catch {
                 guard !Task.isCancelled else { return }
                 self.updatePreview(id: city.id, state: .error("Превью недоступно"))
@@ -288,37 +321,11 @@ final class CitySearchViewModel: NSObject {
         return (200..<600).contains(weatherId)
     }
 
-    private func makeLocalTimeText(timezoneOffset: Int) -> String {
-        WeatherFormattingService().localTime(timezoneOffset: timezoneOffset)
-    }
-
-    private func resolveMapItem(for completion: MKLocalSearchCompletion) async throws -> MKMapItem {
-        let request = MKLocalSearch.Request(completion: completion)
-        let response = try await MKLocalSearch(request: request).start()
-
-        guard let mapItem = response.mapItems.first else {
-            throw LocationError.locationUnavailable
-        }
-
-        return mapItem
-    }
-
-    private func makeCityName(from placemark: MKPlacemark, fallback: String) -> String {
-        [placemark.locality, placemark.name, placemark.administrativeArea]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first { !$0.isEmpty } ?? fallback
-    }
-
-    private func makeSubtitle(from placemark: MKPlacemark, fallback: String) -> String {
-        let parts = [placemark.administrativeArea, placemark.country]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        if !parts.isEmpty {
-            return parts.joined(separator: ", ")
-        }
-
-        return fallback.isEmpty ? "Сохранённый город" : fallback
+    private func makeLocalTimeText(timezoneIdentifier: String, timezoneOffset: Int) -> String {
+        WeatherFormattingService().localTime(
+            timezoneIdentifier: timezoneIdentifier,
+            timezoneOffset: timezoneOffset
+        )
     }
 
     private func sentenceCapitalized(_ text: String) -> String {
@@ -331,24 +338,5 @@ final class CitySearchViewModel: NSObject {
             cityPreviews: cityPreviews,
             resultsState: searchResultsState
         ))
-    }
-}
-
-extension CitySearchViewModel: MKLocalSearchCompleterDelegate {
-
-    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        completions = completer.results
-        let suggestions = completions.map {
-            CitySearchSuggestionUIModel(title: $0.title, subtitle: $0.subtitle)
-        }
-
-        searchResultsState = suggestions.isEmpty ? .noResults : .results(suggestions)
-        emitState()
-    }
-
-    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
-        completions = []
-        searchResultsState = .error("Не удалось выполнить поиск")
-        emitState()
     }
 }

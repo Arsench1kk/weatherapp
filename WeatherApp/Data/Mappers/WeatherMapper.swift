@@ -45,27 +45,39 @@ struct WeatherFormattingService {
         integer(hectopascals)
     }
 
-    func time(timestamp: TimeInterval, timezoneOffset: Int) -> String {
-        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+    func time(timestamp: TimeInterval, timezoneIdentifier: String? = nil, timezoneOffset: Int) -> String {
+        let formatter = makeDateFormatter(
+            timezoneIdentifier: timezoneIdentifier,
+            timezoneOffset: timezoneOffset
+        )
         formatter.dateStyle = .none
         formatter.timeStyle = .short
         return formatter.string(from: Date(timeIntervalSince1970: timestamp))
     }
 
-    func hourlyTime(timestamp: TimeInterval, timezoneOffset: Int) -> String {
-        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+    func hourlyTime(timestamp: TimeInterval, timezoneIdentifier: String? = nil, timezoneOffset: Int) -> String {
+        let formatter = makeDateFormatter(
+            timezoneIdentifier: timezoneIdentifier,
+            timezoneOffset: timezoneOffset
+        )
         formatter.setLocalizedDateFormatFromTemplate("j")
         return formatter.string(from: Date(timeIntervalSince1970: timestamp))
     }
 
-    func dayName(timestamp: TimeInterval, timezoneOffset: Int) -> String {
-        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+    func dayName(timestamp: TimeInterval, timezoneIdentifier: String? = nil, timezoneOffset: Int) -> String {
+        let formatter = makeDateFormatter(
+            timezoneIdentifier: timezoneIdentifier,
+            timezoneOffset: timezoneOffset
+        )
         formatter.setLocalizedDateFormatFromTemplate("EEE")
         return formatter.string(from: Date(timeIntervalSince1970: timestamp)).capitalized(with: locale)
     }
 
-    func localTime(timezoneOffset: Int, date: Date = Date()) -> String {
-        let formatter = makeDateFormatter(timezoneOffset: timezoneOffset)
+    func localTime(timezoneIdentifier: String? = nil, timezoneOffset: Int, date: Date = Date()) -> String {
+        let formatter = makeDateFormatter(
+            timezoneIdentifier: timezoneIdentifier,
+            timezoneOffset: timezoneOffset
+        )
         formatter.dateStyle = .none
         formatter.timeStyle = .short
         return formatter.string(from: date)
@@ -103,10 +115,13 @@ struct WeatherFormattingService {
         return formatter
     }
 
-    private func makeDateFormatter(timezoneOffset: Int) -> DateFormatter {
+    private func makeDateFormatter(timezoneIdentifier: String?, timezoneOffset: Int) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = locale
-        formatter.timeZone = TimeZone(secondsFromGMT: timezoneOffset) ?? .current
+        formatter.timeZone = timezoneIdentifier
+            .flatMap(TimeZone.init(identifier:))
+            ?? TimeZone(secondsFromGMT: timezoneOffset)
+            ?? .current
         return formatter
     }
 }
@@ -118,11 +133,17 @@ final class WeatherMapper {
         let current = response.current
         let hourly = mapHourly(
             hourly: response.hourly,
+            timezoneIdentifier: response.timezone,
             timezoneOffset: response.timezoneOffset,
             currentSunset: current.sunset,
             formatter: formatter
         )
-        let daily = mapDaily(daily: response.daily, timezoneOffset: response.timezoneOffset, formatter: formatter)
+        let daily = mapDaily(
+            daily: response.daily,
+            timezoneIdentifier: response.timezone,
+            timezoneOffset: response.timezoneOffset,
+            formatter: formatter
+        )
         let timeOfDay = TimeOfDay.fromTimezone(offset: response.timezoneOffset)
         let isRaining = isCurrentlyRaining(current: current)
         let feelsLike = current.feelsLike ?? current.temp
@@ -143,8 +164,20 @@ final class WeatherMapper {
             pressure: current.pressure.map(formatter.pressure) ?? "-",
             uvIndex: formatter.integer(current.uvi ?? 0),
             uvDescription: getUvDescription(current.uvi ?? 0),
-            sunrise: current.sunrise.map { formatter.time(timestamp: $0, timezoneOffset: response.timezoneOffset) } ?? "-",
-            sunset: current.sunset.map { formatter.time(timestamp: $0, timezoneOffset: response.timezoneOffset) } ?? "-",
+            sunrise: current.sunrise.map {
+                formatter.time(
+                    timestamp: $0,
+                    timezoneIdentifier: response.timezone,
+                    timezoneOffset: response.timezoneOffset
+                )
+            } ?? "-",
+            sunset: current.sunset.map {
+                formatter.time(
+                    timestamp: $0,
+                    timezoneIdentifier: response.timezone,
+                    timezoneOffset: response.timezoneOffset
+                )
+            } ?? "-",
             dewPoint: formatter.temperature(current.dewPoint ?? 0),
             todayMaxTemperature: formatter.temperature(todayHigh),
             hourlyForecast: hourly,
@@ -159,6 +192,7 @@ final class WeatherMapper {
 
     private static func mapHourly(
         hourly: [HourlyWeather],
+        timezoneIdentifier: String,
         timezoneOffset: Int,
         currentSunset: TimeInterval?,
         formatter: WeatherFormattingService
@@ -182,7 +216,11 @@ final class WeatherMapper {
 
             if !sunsetInserted && sunset > 0 && item.dt > sunset {
                 result.append(HourlyForecastUIModel(
-                    time: formatter.time(timestamp: sunset, timezoneOffset: timezoneOffset),
+                    time: formatter.time(
+                        timestamp: sunset,
+                        timezoneIdentifier: timezoneIdentifier,
+                        timezoneOffset: timezoneOffset
+                    ),
                     temperature: formatter.sunsetLabel,
                     symbolName: "sunset.fill",
                     isSpecial: true
@@ -191,7 +229,11 @@ final class WeatherMapper {
             }
 
             result.append(HourlyForecastUIModel(
-                time: formatter.hourlyTime(timestamp: item.dt, timezoneOffset: timezoneOffset),
+                time: formatter.hourlyTime(
+                    timestamp: item.dt,
+                    timezoneIdentifier: timezoneIdentifier,
+                    timezoneOffset: timezoneOffset
+                ),
                 temperature: formatter.temperature(item.temp),
                 symbolName: sfSymbol(for: item.weather?.first?.icon ?? "01d"),
                 isSpecial: false
@@ -205,6 +247,7 @@ final class WeatherMapper {
 
     private static func mapDaily(
         daily: [DailyWeather],
+        timezoneIdentifier: String,
         timezoneOffset: Int,
         formatter: WeatherFormattingService
     ) -> [DailyForecastUIModel] {
@@ -212,7 +255,11 @@ final class WeatherMapper {
 
         return daily.enumerated().map { index, day in
             DailyForecastUIModel(
-                dayName: index == 0 ? formatter.todayLabel : formatter.dayName(timestamp: day.dt, timezoneOffset: timezoneOffset),
+                dayName: index == 0 ? formatter.todayLabel : formatter.dayName(
+                    timestamp: day.dt,
+                    timezoneIdentifier: timezoneIdentifier,
+                    timezoneOffset: timezoneOffset
+                ),
                 symbolName: sfSymbol(for: day.weather?.first?.icon ?? "01d"),
                 conditionDescription: sentenceCapitalized(day.weather?.first?.description ?? "нет данных"),
                 minTemp: Int(day.temp.min),

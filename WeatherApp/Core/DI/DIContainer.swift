@@ -22,6 +22,10 @@ final class DIContainer {
     private lazy var currentLocationProvider: CurrentLocationProviderProtocol = {
         CurrentLocationProvider()
     }()
+
+    private lazy var citySearchClient: CitySearchClientProtocol = {
+        MapKitCitySearchClient()
+    }()
     
     // MARK: - Repositories
     
@@ -55,7 +59,8 @@ final class DIContainer {
             savedCitiesStore: savedCitiesStore,
             getWeatherUseCase: getWeatherUseCase,
             currentLocationProvider: currentLocationProvider,
-            locationNameResolver: locationNameResolver
+            locationNameResolver: locationNameResolver,
+            citySearchClient: citySearchClient
         )
     }
 

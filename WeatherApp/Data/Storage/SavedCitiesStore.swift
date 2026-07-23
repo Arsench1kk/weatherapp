@@ -7,8 +7,14 @@ extension Notification.Name {
 protocol SavedCitiesStoreProtocol {
     func loadCities() -> [SavedCity]
     func saveCities(_ cities: [SavedCity])
-    @discardableResult func addCity(_ city: SavedCity) -> Bool
+    @discardableResult func addCity(_ city: SavedCity) -> AddCityResult
     func removeCity(id: String)
+}
+
+enum AddCityResult {
+    case added(SavedCity)
+    case existing(SavedCity)
+    case failed
 }
 
 final class UserDefaultsSavedCitiesStore: SavedCitiesStoreProtocol {
@@ -34,16 +40,16 @@ final class UserDefaultsSavedCitiesStore: SavedCitiesStoreProtocol {
     }
 
     @discardableResult
-    func addCity(_ city: SavedCity) -> Bool {
+    func addCity(_ city: SavedCity) -> AddCityResult {
         var cities = loadCities()
-        guard !cities.contains(where: { isDuplicate($0, city) }) else {
-            return false
+        if let existingCity = cities.first(where: { isDuplicate($0, city) }) {
+            return .existing(existingCity)
         }
 
         cities.append(city)
-        guard persistCities(cities) else { return false }
+        guard persistCities(cities) else { return .failed }
         notifySavedCitiesDidChange()
-        return true
+        return .added(city)
     }
 
     func removeCity(id: String) {
