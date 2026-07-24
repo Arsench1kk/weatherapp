@@ -23,6 +23,10 @@ final class WeatherPagerViewController: UIViewController {
     private var sources: [WeatherLocationSource] = []
     private var pageCache: [String: MainViewController] = [:]
     private var activePageIndex = 0
+    #if DEBUG
+    private var debugScript: DebugPagerScript?
+    private var debugScriptTask: Task<Void, Never>?
+    #endif
 
     init(
         savedCitiesStore: SavedCitiesStoreProtocol,
@@ -37,6 +41,12 @@ final class WeatherPagerViewController: UIViewController {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        #if DEBUG
+        debugScriptTask?.cancel()
+        #endif
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -54,7 +64,10 @@ final class WeatherPagerViewController: UIViewController {
         setupPageViewController()
         setupBottomControls()
         setupSavedCitiesObserver()
-        reloadSources(selecting: .currentLocation, animated: false)
+        reloadSources(selecting: initialSource(), animated: false)
+        #if DEBUG
+        runDebugScriptIfNeeded()
+        #endif
         AppHaptics.prepareLightImpact()
     }
 
@@ -74,6 +87,16 @@ final class WeatherPagerViewController: UIViewController {
         }
 
         return sources[activePageIndex]
+    }
+
+    private func initialSource() -> WeatherLocationSource {
+        #if DEBUG
+        if let source = debugScript?.initialSource(from: savedCitiesStore.loadCities()) {
+            return source
+        }
+        #endif
+
+        return .currentLocation
     }
 
     private func setupPageViewController() {
@@ -254,6 +277,38 @@ final class WeatherPagerViewController: UIViewController {
         AppHaptics.lightImpact()
     }
 }
+
+#if DEBUG
+extension WeatherPagerViewController {
+
+    func configureDebugScript(_ script: DebugPagerScript) {
+        debugScript = script
+    }
+
+    private func runDebugScriptIfNeeded() {
+        guard let delay = debugScript?.deleteActiveCityAfter,
+              delay >= 0 else {
+            return
+        }
+
+        debugScriptTask?.cancel()
+        debugScriptTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                return
+            }
+
+            self?.deleteActiveCityForDebug()
+        }
+    }
+
+    private func deleteActiveCityForDebug() {
+        guard case .fixedCity(let city) = activeSource else { return }
+        savedCitiesStore.removeCity(id: city.id)
+    }
+}
+#endif
 
 private final class WeatherCityListTransitioningDelegate: NSObject, UIViewControllerTransitioningDelegate {
 
