@@ -41,7 +41,6 @@ final class MainViewController: UIViewController {
         static let bottomContentClearance: CGFloat = 104
         static let preferredHeaderHeight: CGFloat = 212
         static let minimumHeaderHeight: CGFloat = 176
-        static let maximumHeaderHeightRatio: CGFloat = 0.24
     }
 
     // MARK: - UI
@@ -260,7 +259,6 @@ final class MainViewController: UIViewController {
         headerView.snp.makeConstraints { make in
             make.height.equalTo(Layout.preferredHeaderHeight).priority(.high)
             make.height.greaterThanOrEqualTo(Layout.minimumHeaderHeight)
-            make.height.lessThanOrEqualTo(view.snp.height).multipliedBy(Layout.maximumHeaderHeightRatio).priority(.high)
         }
 
         // Состояния поверх всего

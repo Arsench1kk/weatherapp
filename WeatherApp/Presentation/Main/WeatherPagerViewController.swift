@@ -119,7 +119,7 @@ final class WeatherPagerViewController: UIViewController {
             make.height.equalTo(44)
         }
 
-        bottomControlsView.onMapTap = { }
+        bottomControlsView.setMapEnabled(false)
         bottomControlsView.onPagerTap = { [weak self] in
             self?.showNextPage()
         }

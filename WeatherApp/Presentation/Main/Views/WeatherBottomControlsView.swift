@@ -27,6 +27,12 @@ final class WeatherBottomControlsView: UIView {
         pagerButton.configure(currentPage: currentPage, totalPages: totalPages)
     }
 
+    func setMapEnabled(_ isEnabled: Bool) {
+        mapButton.isEnabled = isEnabled
+        mapButton.alpha = isEnabled ? 1 : 0.34
+        mapButton.accessibilityTraits = isEnabled ? [.button] : [.button, .notEnabled]
+    }
+
     private func setupUI() {
         backgroundColor = .clear
 
@@ -57,6 +63,10 @@ final class WeatherBottomControlsView: UIView {
         mapButton.addTarget(self, action: #selector(handleMapTap), for: .touchUpInside)
         pagerButton.addTarget(self, action: #selector(handlePagerTap), for: .touchUpInside)
         listButton.addTarget(self, action: #selector(handleListTap), for: .touchUpInside)
+
+        mapButton.accessibilityLabel = "Карта"
+        pagerButton.accessibilityLabel = "Сохранённые города"
+        listButton.accessibilityLabel = "Список городов"
     }
 
     @objc private func handleMapTap() {
@@ -189,6 +199,7 @@ private final class GlassPagerButton: GlassControlButton {
         applyActiveIndicator()
         invalidateIntrinsicContentSize()
         setNeedsLayout()
+        accessibilityValue = "\(safeCurrentPage + 1) из \(safeTotalPages)"
     }
 
     override var intrinsicContentSize: CGSize {
