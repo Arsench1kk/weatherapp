@@ -9,8 +9,13 @@ protocol CurrentLocationProviderProtocol {
 final class CurrentLocationProvider: NSObject, CurrentLocationProviderProtocol {
 
     private let manager = CLLocationManager()
+
+    private struct RequestToken: Equatable, Sendable {
+        let id = UUID()
+    }
+
     private struct LocationRequest {
-        let id: UUID
+        let token: RequestToken
         let continuation: CheckedContinuation<CLLocation, Error>
     }
 
@@ -25,32 +30,30 @@ final class CurrentLocationProvider: NSObject, CurrentLocationProviderProtocol {
     @MainActor
     func requestCurrentLocation() async throws -> CLLocation {
         try Task.checkCancellation()
-        let requestID = UUID()
-
-        let provider = self
+        let token = RequestToken()
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                finishCurrentRequest(with: .failure(CancellationError()))
-                currentRequest = LocationRequest(id: requestID, continuation: continuation)
+                cancelActiveRequest()
+                currentRequest = LocationRequest(token: token, continuation: continuation)
 
                 if Task.isCancelled {
-                    finishRequest(id: requestID, with: .failure(CancellationError()))
+                    finishRequest(token: token, with: .failure(CancellationError()))
                     return
                 }
 
-                startRequest(for: requestID)
+                startRequest(for: token)
             }
         } onCancel: {
-            Task { @MainActor in
-                provider.cancelRequest(id: requestID)
+            Task { @MainActor [weak self, token] in
+                self?.cancelRequest(token: token)
             }
         }
     }
 
     @MainActor
-    private func startRequest(for requestID: UUID) {
-        guard currentRequest?.id == requestID else { return }
+    private func startRequest(for token: RequestToken) {
+        guard currentRequest?.token == token else { return }
 
         switch manager.authorizationStatus {
         case .notDetermined:
@@ -58,27 +61,32 @@ final class CurrentLocationProvider: NSObject, CurrentLocationProviderProtocol {
         case .authorizedWhenInUse, .authorizedAlways:
             manager.requestLocation()
         case .denied:
-            finishRequest(id: requestID, with: .failure(LocationError.permissionDenied))
+            finishRequest(token: token, with: .failure(LocationError.permissionDenied))
         case .restricted:
-            finishRequest(id: requestID, with: .failure(LocationError.permissionRestricted))
+            finishRequest(token: token, with: .failure(LocationError.permissionRestricted))
         @unknown default:
-            finishRequest(id: requestID, with: .failure(LocationError.locationUnavailable))
+            finishRequest(token: token, with: .failure(LocationError.locationUnavailable))
         }
     }
 
     @MainActor
-    private func cancelRequest(id requestID: UUID) {
-        finishRequest(id: requestID, with: .failure(CancellationError()))
+    private func cancelRequest(token: RequestToken) {
+        finishRequest(token: token, with: .failure(CancellationError()))
     }
 
     @MainActor
-    private func finishRequest(id requestID: UUID, with result: Result<CLLocation, Error>) {
-        guard currentRequest?.id == requestID else { return }
-        finishCurrentRequest(with: result)
+    private func finishRequest(token: RequestToken, with result: Result<CLLocation, Error>) {
+        guard currentRequest?.token == token else { return }
+        finishActiveRequest(with: result)
     }
 
     @MainActor
-    private func finishCurrentRequest(with result: Result<CLLocation, Error>) {
+    private func cancelActiveRequest() {
+        finishActiveRequest(with: .failure(CancellationError()))
+    }
+
+    @MainActor
+    private func finishActiveRequest(with result: Result<CLLocation, Error>) {
         guard let request = currentRequest else { return }
         currentRequest = nil
 
@@ -96,15 +104,15 @@ extension CurrentLocationProvider: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            guard let requestID = currentRequest?.id else { return }
+            guard let token = currentRequest?.token else { return }
 
             switch manager.authorizationStatus {
             case .authorizedWhenInUse, .authorizedAlways:
                 manager.requestLocation()
             case .denied:
-                finishRequest(id: requestID, with: .failure(LocationError.permissionDenied))
+                finishRequest(token: token, with: .failure(LocationError.permissionDenied))
             case .restricted:
-                finishRequest(id: requestID, with: .failure(LocationError.permissionRestricted))
+                finishRequest(token: token, with: .failure(LocationError.permissionRestricted))
             default:
                 break
             }
@@ -114,26 +122,26 @@ extension CurrentLocationProvider: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            guard let requestID = currentRequest?.id else { return }
+            guard let token = currentRequest?.token else { return }
 
             guard let location = locations.last else {
-                finishRequest(id: requestID, with: .failure(LocationError.locationUnavailable))
+                finishRequest(token: token, with: .failure(LocationError.locationUnavailable))
                 return
             }
 
-            finishRequest(id: requestID, with: .success(location))
+            finishRequest(token: token, with: .success(location))
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            guard let requestID = currentRequest?.id else { return }
+            guard let token = currentRequest?.token else { return }
 
             if let clError = error as? CLError, clError.code == .denied {
-                finishRequest(id: requestID, with: .failure(LocationError.permissionDenied))
+                finishRequest(token: token, with: .failure(LocationError.permissionDenied))
             } else {
-                finishRequest(id: requestID, with: .failure(LocationError.unknown(error)))
+                finishRequest(token: token, with: .failure(LocationError.unknown(error)))
             }
         }
     }
