@@ -1,6 +1,6 @@
 import Foundation
 
-struct OneCallResponse: Decodable {
+struct OneCallResponse: Codable {
     let lat: Double
     let lon: Double
     let timezone: String
@@ -14,7 +14,7 @@ struct OneCallResponse: Decodable {
     }
 }
 
-struct CurrentWeather: Decodable {
+struct CurrentWeather: Codable {
     let dt: TimeInterval
     let sunrise: TimeInterval?
     let sunset: TimeInterval?
@@ -37,7 +37,7 @@ struct CurrentWeather: Decodable {
     }
 }
 
-struct HourlyWeather: Decodable {
+struct HourlyWeather: Codable {
     let dt: TimeInterval
     let temp: Double
     let feelsLike: Double?
@@ -59,7 +59,7 @@ struct HourlyWeather: Decodable {
     }
 }
 
-struct DailyWeather: Decodable {
+struct DailyWeather: Codable {
     let dt: TimeInterval
     let sunrise: TimeInterval?
     let sunset: TimeInterval?
@@ -86,7 +86,7 @@ struct DailyWeather: Decodable {
     }
 }
 
-struct Temperature: Decodable {
+struct Temperature: Codable {
     let day: Double
     let min: Double
     let max: Double
@@ -95,14 +95,14 @@ struct Temperature: Decodable {
     let morn: Double
 }
 
-struct FeelsLike: Decodable {
+struct FeelsLike: Codable {
     let day: Double
     let night: Double
     let eve: Double
     let morn: Double
 }
 
-struct WeatherCondition: Decodable {
+struct WeatherCondition: Codable {
     let id: Int
     let main: String?
     let description: String?

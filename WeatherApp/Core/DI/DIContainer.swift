@@ -85,11 +85,21 @@ final class DIContainer {
 
         return UserDefaultsSavedCitiesStore()
     }()
+
+    private lazy var weatherCache: WeatherCacheProtocol = {
+        #if DEBUG
+        if debugScenario != nil {
+            return InMemoryWeatherCache()
+        }
+        #endif
+
+        return UserDefaultsWeatherCache()
+    }()
     
     // MARK: - UseCases
     
     private lazy var getWeatherUseCase: GetWeatherUseCaseProtocol = {
-        GetWeatherUseCase(repository: weatherRepository)
+        GetWeatherUseCase(repository: weatherRepository, cache: weatherCache)
     }()
     
     // MARK: - ViewModels

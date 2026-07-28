@@ -25,6 +25,7 @@ struct MainWeatherUIModel {
     let conditionSummary: String // Текст для погодного тезиса
     let timeOfDay: TimeOfDay     // Для выбора фона
     let isRaining: Bool          // Для выбора фона
+    let isStale: Bool            // Показаны сохранённые данные
 }
 
 struct WeatherTheme: Equatable {

@@ -84,7 +84,7 @@ struct WeatherFormattingService {
     }
 
     func highLowText(highCelsius: Double, lowCelsius: Double) -> String {
-        "H:\(temperature(highCelsius))  L:\(temperature(lowCelsius))"
+        "Макс. \(temperature(highCelsius))  Мин. \(temperature(lowCelsius))"
     }
 
     func maxMinText(maxCelsius: Double, minCelsius: Double) -> String {
@@ -128,7 +128,11 @@ struct WeatherFormattingService {
 
 final class WeatherMapper {
 
-    static func map(response: OneCallResponse, locationName: String = "Текущее местоположение") -> MainWeatherUIModel {
+    static func map(
+        response: OneCallResponse,
+        locationName: String = "Текущее местоположение",
+        isStale: Bool = false
+    ) -> MainWeatherUIModel {
         let formatter = WeatherFormattingService()
         let current = response.current
         let hourly = mapHourly(
@@ -184,7 +188,8 @@ final class WeatherMapper {
             dailyForecast: daily,
             conditionSummary: buildSummary(current: current, formatter: formatter),
             timeOfDay: timeOfDay,
-            isRaining: isRaining
+            isRaining: isRaining,
+            isStale: isStale
         )
     }
 

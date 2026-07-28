@@ -105,6 +105,7 @@ final class WeatherHeaderView: UIView {
     // MARK: - Configure
 
     func configure(with model: MainWeatherUIModel) {
+        locationLabel.text = model.isStale ? "ОФЛАЙН • СОХРАНЁННЫЕ ДАННЫЕ" : nil
         cityLabel.text = model.cityName
         temperatureLabel.text = model.temperature
         descriptionLabel.text = model.description

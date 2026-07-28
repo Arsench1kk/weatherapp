@@ -110,17 +110,16 @@ final class MainViewModel {
 
             do {
                 async let resolvedLocationName = self.locationNameResolver.resolveName(for: location)
-                let response = try await self.getWeatherUseCase.execute(
+                let result = try await self.getWeatherUseCase.executeWithCacheResult(
                     lat: location.coordinate.latitude,
                     lon: location.coordinate.longitude
                 )
                 guard !Task.isCancelled else { return }
 
                 let locationName = await resolvedLocationName ?? self.fallbackLocationName
-                self.applyWeatherResponse(
-                    response,
-                    locationName: locationName,
-                    presentationMode: presentationMode
+                self.applyWeatherResult(
+                    result,
+                    locationName: locationName
                 )
             } catch is CancellationError {
                 return
@@ -148,12 +147,11 @@ final class MainViewModel {
             guard let self else { return }
 
             do {
-                let response = try await self.getWeatherUseCase.execute(lat: lat, lon: lon)
+                let result = try await self.getWeatherUseCase.executeWithCacheResult(lat: lat, lon: lon)
                 guard !Task.isCancelled else { return }
-                self.applyWeatherResponse(
-                    response,
-                    locationName: locationName,
-                    presentationMode: presentationMode
+                self.applyWeatherResult(
+                    result,
+                    locationName: locationName
                 )
             } catch is CancellationError {
                 return
@@ -169,12 +167,15 @@ final class MainViewModel {
         }
     }
 
-    private func applyWeatherResponse(
-        _ response: OneCallResponse,
-        locationName: String,
-        presentationMode: FetchPresentationMode
+    private func applyWeatherResult(
+        _ result: WeatherResponseResult,
+        locationName: String
     ) {
-        let uiModel = WeatherMapper.map(response: response, locationName: locationName)
+        let uiModel = WeatherMapper.map(
+            response: result.response,
+            locationName: locationName,
+            isStale: result.isStale
+        )
         onStateChanged?(.loaded(uiModel))
     }
 }
