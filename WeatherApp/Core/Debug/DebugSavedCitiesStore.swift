@@ -19,7 +19,7 @@ final class DebugSavedCitiesStore: SavedCitiesStoreProtocol {
     }
 
     @discardableResult
-    func addCity(_ city: SavedCity) -> AddCityResult {
+    func saveCityIfNeeded(_ city: SavedCity) -> AddCityResult {
         if let existingCity = cities.first(where: { isDuplicate($0, city) }) {
             return .existing(existingCity)
         }

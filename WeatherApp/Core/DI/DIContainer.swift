@@ -101,6 +101,14 @@ final class DIContainer {
     private lazy var getWeatherUseCase: GetWeatherUseCaseProtocol = {
         GetWeatherUseCase(repository: weatherRepository, cache: weatherCache)
     }()
+
+    private lazy var cityWeatherPreviewLoader: CityWeatherPreviewLoader = {
+        CityWeatherPreviewLoader(
+            getWeatherUseCase: getWeatherUseCase,
+            currentLocationProvider: currentLocationProvider,
+            locationNameResolver: locationNameResolver
+        )
+    }()
     
     // MARK: - ViewModels
     
@@ -116,10 +124,8 @@ final class DIContainer {
     private func makeCitySearchViewModel() -> CitySearchViewModel {
         CitySearchViewModel(
             savedCitiesStore: savedCitiesStore,
-            getWeatherUseCase: getWeatherUseCase,
-            currentLocationProvider: currentLocationProvider,
-            locationNameResolver: locationNameResolver,
-            citySearchClient: citySearchClient
+            citySearchClient: citySearchClient,
+            previewLoader: cityWeatherPreviewLoader
         )
     }
 

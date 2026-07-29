@@ -1,5 +1,4 @@
 import Foundation
-import CoreLocation
 
 final class CitySearchViewModel {
 
@@ -7,10 +6,8 @@ final class CitySearchViewModel {
     var onCitySelected: ((CitySelection) -> Void)?
 
     private let savedCitiesStore: SavedCitiesStoreProtocol
-    private let getWeatherUseCase: GetWeatherUseCaseProtocol
-    private let currentLocationProvider: CurrentLocationProviderProtocol
-    private let locationNameResolver: LocationNameResolving
     private let citySearchClient: CitySearchClientProtocol
+    private let previewLoader: CityWeatherPreviewLoader
 
     private var savedCities: [SavedCity] = []
     private var cityPreviews: [CityWeatherPreviewUIModel] = []
@@ -23,16 +20,12 @@ final class CitySearchViewModel {
 
     init(
         savedCitiesStore: SavedCitiesStoreProtocol,
-        getWeatherUseCase: GetWeatherUseCaseProtocol,
-        currentLocationProvider: CurrentLocationProviderProtocol,
-        locationNameResolver: LocationNameResolving,
-        citySearchClient: CitySearchClientProtocol
+        citySearchClient: CitySearchClientProtocol,
+        previewLoader: CityWeatherPreviewLoader
     ) {
         self.savedCitiesStore = savedCitiesStore
-        self.getWeatherUseCase = getWeatherUseCase
-        self.currentLocationProvider = currentLocationProvider
-        self.locationNameResolver = locationNameResolver
         self.citySearchClient = citySearchClient
+        self.previewLoader = previewLoader
     }
 
     deinit {
@@ -136,7 +129,7 @@ final class CitySearchViewModel {
                 let city = try await self.citySearchClient.resolve(selectedCompletion)
 
                 let selectedCity: SavedCity
-                switch self.savedCitiesStore.addCity(city) {
+                switch self.savedCitiesStore.saveCityIfNeeded(city) {
                 case .added(let city), .existing(let city):
                     selectedCity = city
                 case .failed:
@@ -168,34 +161,8 @@ final class CitySearchViewModel {
 
     private func reloadSavedCities() {
         savedCities = savedCitiesStore.loadCities()
-        cityPreviews = makeInitialPreviews()
+        cityPreviews = previewLoader.makeInitialPreviews(savedCities: savedCities)
         emitState()
-    }
-
-    private func makeInitialPreviews() -> [CityWeatherPreviewUIModel] {
-        let currentLocationPreview = CityWeatherPreviewUIModel(
-            id: CityWeatherPreviewUIModel.currentLocationID,
-            title: "Текущее местоположение",
-            subtitle: "Определяется автоматически",
-            isCurrentLocation: true,
-            city: nil,
-            theme: .current,
-            state: .loading
-        )
-
-        let savedPreviews = savedCities.map { city in
-            CityWeatherPreviewUIModel(
-                id: city.id,
-                title: city.name,
-                subtitle: city.subtitle,
-                isCurrentLocation: false,
-                city: city,
-                theme: .current,
-                state: .loading
-            )
-        }
-
-        return [currentLocationPreview] + savedPreviews
     }
 
     private func loadWeatherPreviews() {
@@ -209,33 +176,9 @@ final class CitySearchViewModel {
     private func loadCurrentLocationPreview() {
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
-
-            do {
-                let location = try await self.currentLocationProvider.requestCurrentLocation()
-                async let resolvedName = self.locationNameResolver.resolveName(for: location)
-                let response = try await self.getWeatherUseCase.execute(
-                    lat: location.coordinate.latitude,
-                    lon: location.coordinate.longitude
-                )
-                guard !Task.isCancelled else { return }
-
-                let locationName = await resolvedName ?? "My Location"
-                self.updatePreview(
-                    id: CityWeatherPreviewUIModel.currentLocationID,
-                    title: locationName,
-                    subtitle: "My Location • Home",
-                    theme: self.makeWeatherTheme(from: response),
-                    state: self.makeLoadedPreviewState(from: response)
-                )
-            } catch is CancellationError {
-                return
-            } catch {
-                guard !Task.isCancelled else { return }
-                self.updatePreview(
-                    id: CityWeatherPreviewUIModel.currentLocationID,
-                    state: .error("Геолокация недоступна")
-                )
-            }
+            guard let update = await self.previewLoader.loadCurrentLocationPreview(),
+                  !Task.isCancelled else { return }
+            self.applyPreviewUpdate(update)
         }
 
         previewTasks.append(task)
@@ -244,93 +187,28 @@ final class CitySearchViewModel {
     private func loadSavedCityPreview(_ city: SavedCity) {
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
-
-            do {
-                let response = try await self.getWeatherUseCase.execute(
-                    lat: city.latitude,
-                    lon: city.longitude
-                )
-                guard !Task.isCancelled else { return }
-                self.updatePreview(
-                    id: city.id,
-                    subtitle: self.makeLocalTimeText(
-                        timezoneIdentifier: response.timezone,
-                        timezoneOffset: response.timezoneOffset
-                    ),
-                    theme: self.makeWeatherTheme(from: response),
-                    state: self.makeLoadedPreviewState(from: response)
-                )
-            } catch is CancellationError {
-                return
-            } catch {
-                guard !Task.isCancelled else { return }
-                self.updatePreview(id: city.id, state: .error("Превью недоступно"))
-            }
+            guard let update = await self.previewLoader.loadSavedCityPreview(city),
+                  !Task.isCancelled else { return }
+            self.applyPreviewUpdate(update)
         }
 
         previewTasks.append(task)
     }
 
-    private func updatePreview(
-        id: String,
-        title: String? = nil,
-        subtitle: String? = nil,
-        theme: WeatherTheme? = nil,
-        state: CityWeatherPreviewState
-    ) {
-        guard let index = cityPreviews.firstIndex(where: { $0.id == id }) else { return }
+    private func applyPreviewUpdate(_ update: CityWeatherPreviewUpdate) {
+        guard let index = cityPreviews.firstIndex(where: { $0.id == update.id }) else { return }
         let currentPreview = cityPreviews[index]
 
         cityPreviews[index] = CityWeatherPreviewUIModel(
             id: currentPreview.id,
-            title: title ?? currentPreview.title,
-            subtitle: subtitle ?? currentPreview.subtitle,
+            title: update.title ?? currentPreview.title,
+            subtitle: update.subtitle ?? currentPreview.subtitle,
             isCurrentLocation: currentPreview.isCurrentLocation,
             city: currentPreview.city,
-            theme: theme ?? currentPreview.theme,
-            state: state
+            theme: update.theme ?? currentPreview.theme,
+            state: update.state
         )
         emitState()
-    }
-
-    private func makeLoadedPreviewState(from response: OneCallResponse) -> CityWeatherPreviewState {
-        let formatter = WeatherFormattingService()
-        let day = response.daily.first
-        let highLow = formatter.highLowText(
-            highCelsius: day?.temp.max ?? response.current.temp,
-            lowCelsius: day?.temp.min ?? response.current.temp
-        )
-
-        return .loaded(
-            temperature: formatter.temperature(response.current.temp),
-            description: sentenceCapitalized(response.current.weather?.first?.description ?? "Нет данных"),
-            symbolName: WeatherMapper.sfSymbol(for: response.current.weather?.first?.icon ?? "01d"),
-            highLow: highLow
-        )
-    }
-
-    private func makeWeatherTheme(from response: OneCallResponse) -> WeatherTheme {
-        WeatherTheme(
-            timeOfDay: TimeOfDay.fromTimezone(offset: response.timezoneOffset),
-            isRaining: isCurrentlyRaining(current: response.current)
-        )
-    }
-
-    private func isCurrentlyRaining(current: CurrentWeather) -> Bool {
-        guard let weatherId = current.weather?.first?.id else { return false }
-        return (200..<600).contains(weatherId)
-    }
-
-    private func makeLocalTimeText(timezoneIdentifier: String, timezoneOffset: Int) -> String {
-        WeatherFormattingService().localTime(
-            timezoneIdentifier: timezoneIdentifier,
-            timezoneOffset: timezoneOffset
-        )
-    }
-
-    private func sentenceCapitalized(_ text: String) -> String {
-        guard let firstCharacter = text.first else { return text }
-        return firstCharacter.uppercased() + text.dropFirst().lowercased()
     }
 
     private func emitState() {
