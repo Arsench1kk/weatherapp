@@ -73,6 +73,7 @@ final class WeatherDetailsView: UIView {
 
 private class WeatherBaseCard: UIView {
 
+    let cardTitle: String
     let containerView = WeatherCardStyle.makeContainerView()
     let contentStackView: UIStackView = {
         let stackView = UIStackView()
@@ -83,6 +84,7 @@ private class WeatherBaseCard: UIView {
     }()
 
     init(iconName: String, title: String) {
+        self.cardTitle = title
         super.init(frame: .zero)
         setupUI(iconName: iconName, title: title)
     }
@@ -92,6 +94,9 @@ private class WeatherBaseCard: UIView {
     private func setupUI(iconName: String, title: String) {
         addSubview(containerView)
         containerView.snp.makeConstraints { $0.edges.equalToSuperview() }
+        isAccessibilityElement = true
+        accessibilityTraits = [.staticText]
+        containerView.isAccessibilityElement = false
 
         containerView.addSubview(contentStackView)
         contentStackView.snp.makeConstraints { make in
@@ -108,6 +113,7 @@ private class WeatherBaseCard: UIView {
             .withRenderingMode(.alwaysTemplate)
         iconView.tintColor = WeatherCardStyle.iconTintColor
         iconView.contentMode = .scaleAspectFit
+        iconView.isAccessibilityElement = false
         iconView.snp.makeConstraints { $0.size.equalTo(14) }
 
         let label = AppTextStyle.label(style: AppTextStyle.weatherCardTitle, color: WeatherCardStyle.titleColor)
@@ -155,6 +161,7 @@ private final class WeatherMetricCard: WeatherBaseCard {
     func configure(value: String, detail: String) {
         valueLabel.text = value
         detailLabel.text = detail
+        accessibilityLabel = "\(cardTitle). \(value). \(detail)"
     }
 }
 
@@ -192,6 +199,7 @@ private final class WeatherAverageCard: WeatherBaseCard {
         todayLabel.configure(title: "Сегодня", value: "Макс.: \(model.todayMaxTemperature)")
         // TODO: Replace this row with average deviation when the API/UI model exposes that value.
         averageLabel.configure(title: "Ощущается", value: model.feelsLike)
+        accessibilityLabel = "\(cardTitle). \(model.todayMaxTemperature). Сегодняшний максимум. Ощущается \(model.feelsLike)."
     }
 }
 
@@ -215,6 +223,7 @@ private final class WeatherWindCard: WeatherBaseCard {
         windRow.configure(title: "Ветер", value: model.windSpeed)
         gustRow.configure(title: "Порывы ветра", value: model.windGust)
         directionRow.configure(title: "Направление", value: model.windDirection)
+        accessibilityLabel = "\(cardTitle). Ветер \(model.windSpeed). Порывы \(model.windGust). Направление \(model.windDirection)."
     }
 
     private func makeRowsStack() -> UIStackView {
@@ -283,6 +292,7 @@ private final class WeatherUVIndexCard: WeatherBaseCard {
         let uvIndex = Double(value) ?? 0
         detailLabel.text = makeDetailText(for: uvIndex)
         uvBar.configure(index: uvIndex)
+        accessibilityLabel = "\(cardTitle). \(value), \(description). \(detailLabel.text ?? "")"
     }
 
     private func makeDetailText(for value: Double) -> String {
@@ -314,6 +324,7 @@ private final class WeatherPressureCard: WeatherBaseCard {
             .withRenderingMode(.alwaysTemplate)
         iconView.tintColor = WeatherCardStyle.iconTintColor
         iconView.contentMode = .scaleAspectFit
+        iconView.isAccessibilityElement = false
         iconView.snp.makeConstraints { $0.size.equalTo(14) }
 
         let label = AppTextStyle.label(style: UIFont.systemFont(ofSize: 15, weight: .regular), color: WeatherCardStyle.secondaryTextColor)
@@ -338,6 +349,7 @@ private final class WeatherPressureCard: WeatherBaseCard {
 
     func configure(value: String) {
         valueLabel.text = value
+        accessibilityLabel = "\(cardTitle). \(value) гектопаскалей."
     }
 }
 
@@ -365,6 +377,7 @@ private final class WeatherKeyValueRow: UIView {
         addSubview(stackView)
         stackView.snp.makeConstraints { $0.edges.equalToSuperview() }
         snp.makeConstraints { $0.height.equalTo(24) }
+        isAccessibilityElement = false
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -398,6 +411,7 @@ private final class WeatherSmallMetricLabel: UIView {
         addSubview(stackView)
         stackView.snp.makeConstraints { $0.edges.equalToSuperview() }
         snp.makeConstraints { $0.height.equalTo(18) }
+        isAccessibilityElement = false
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -424,6 +438,8 @@ private final class WeatherUVBarView: UIView {
         layer.cornerRadius = 2
         clipsToBounds = true
         addSubview(indicatorView)
+        isAccessibilityElement = false
+        indicatorView.isAccessibilityElement = false
     }
 
     required init?(coder: NSCoder) { fatalError() }

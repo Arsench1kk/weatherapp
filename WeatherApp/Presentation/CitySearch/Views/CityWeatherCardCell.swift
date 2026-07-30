@@ -78,6 +78,8 @@ final class CityWeatherCardCell: UITableViewCell {
         super.prepareForReuse()
         activityIndicatorView.stopAnimating()
         weatherImageView.image = nil
+        accessibilityLabel = nil
+        accessibilityValue = nil
     }
 
     func configure(with model: CityWeatherPreviewUIModel) {
@@ -90,9 +92,15 @@ final class CityWeatherCardCell: UITableViewCell {
         case .loading:
             temperatureLabel.text = "--"
             conditionLabel.text = "Загрузка"
-            highLowLabel.text = "H:--  L:--"
+            highLowLabel.text = "Макс. --  Мин. --"
             weatherImageView.isHidden = true
             activityIndicatorView.startAnimating()
+            accessibilityLabel = makeAccessibilityLabel(
+                title: model.title,
+                subtitle: model.subtitle,
+                currentLocation: model.isCurrentLocation,
+                summary: "Загрузка прогноза"
+            )
 
         case .loaded(let temperature, let description, let symbolName, let highLow):
             temperatureLabel.text = temperature
@@ -101,14 +109,26 @@ final class CityWeatherCardCell: UITableViewCell {
             weatherImageView.image = UIImage(systemName: symbolName)
             weatherImageView.isHidden = false
             activityIndicatorView.stopAnimating()
+            accessibilityLabel = makeAccessibilityLabel(
+                title: model.title,
+                subtitle: model.subtitle,
+                currentLocation: model.isCurrentLocation,
+                summary: "\(temperature), \(description), \(highLow)"
+            )
 
         case .error(let message):
             temperatureLabel.text = "--"
             conditionLabel.text = message
-            highLowLabel.text = "H:--  L:--"
+            highLowLabel.text = "Макс. --  Мин. --"
             weatherImageView.image = UIImage(systemName: "exclamationmark.triangle.fill")
             weatherImageView.isHidden = false
             activityIndicatorView.stopAnimating()
+            accessibilityLabel = makeAccessibilityLabel(
+                title: model.title,
+                subtitle: model.subtitle,
+                currentLocation: model.isCurrentLocation,
+                summary: "Ошибка: \(message)"
+            )
         }
     }
 
@@ -116,6 +136,14 @@ final class CityWeatherCardCell: UITableViewCell {
         backgroundColor = .clear
         contentView.backgroundColor = .clear
         selectionStyle = .none
+        isAccessibilityElement = true
+        accessibilityTraits = [.button]
+        contentView.isAccessibilityElement = false
+        cardView.isAccessibilityElement = false
+        backgroundViewForCard.isAccessibilityElement = false
+        locationImageView.isAccessibilityElement = false
+        weatherImageView.isAccessibilityElement = false
+        activityIndicatorView.isAccessibilityElement = false
         titleLabel.lineBreakMode = .byTruncatingTail
         subtitleLabel.lineBreakMode = .byTruncatingTail
         conditionLabel.lineBreakMode = .byTruncatingTail
@@ -194,5 +222,16 @@ final class CityWeatherCardCell: UITableViewCell {
             make.width.greaterThanOrEqualTo(92)
             make.width.lessThanOrEqualTo(128)
         }
+    }
+
+    private func makeAccessibilityLabel(
+        title: String,
+        subtitle: String,
+        currentLocation: Bool,
+        summary: String
+    ) -> String {
+        let locationPrefix = currentLocation ? "Текущее местоположение. " : ""
+        let subtitleText = subtitle.isEmpty ? "" : ", \(subtitle)"
+        return "\(locationPrefix)\(title)\(subtitleText). \(summary)"
     }
 }

@@ -27,6 +27,9 @@ final class CitySearchResultCell: UITableViewCell {
     func configure(with model: CitySearchSuggestionUIModel) {
         titleLabel.text = model.title
         subtitleLabel.text = model.subtitle
+        accessibilityLabel = model.subtitle.isEmpty
+            ? model.title
+            : "\(model.title), \(model.subtitle)"
     }
 
     private func setupUI() {
@@ -34,6 +37,9 @@ final class CitySearchResultCell: UITableViewCell {
         contentView.backgroundColor = .clear
         selectedBackgroundView = UIView()
         selectedBackgroundView?.backgroundColor = UIColor.white.withAlphaComponent(0.08)
+        isAccessibilityElement = true
+        accessibilityTraits = [.button]
+        contentView.isAccessibilityElement = false
 
         let textStackView = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
         textStackView.axis = .vertical

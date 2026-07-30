@@ -1,36 +1,6 @@
 import UIKit
 import SnapKit
 
-#if DEBUG_WEATHER_THEME_CONTROLS
-private enum DebugTimeOverride: Int, CaseIterable {
-    case automatic
-    case morning
-    case day
-    case evening
-    case night
-
-    var title: String {
-        switch self {
-        case .automatic: return "Авто"
-        case .morning: return "У"
-        case .day: return "Д"
-        case .evening: return "В"
-        case .night: return "Н"
-        }
-    }
-
-    var timeOfDay: TimeOfDay? {
-        switch self {
-        case .automatic: return nil
-        case .morning: return .morning
-        case .day: return .day
-        case .evening: return .evening
-        case .night: return .night
-        }
-    }
-}
-#endif
-
 final class MainViewController: UIViewController {
 
     let locationSource: WeatherLocationSource
@@ -92,66 +62,10 @@ final class MainViewController: UIViewController {
         label.clipsToBounds = true
         label.alpha = 0
         label.isHidden = true
+        label.isAccessibilityElement = true
+        label.accessibilityTraits = [.staticText]
         return label
     }()
-
-    #if DEBUG_WEATHER_THEME_CONTROLS
-    private lazy var debugTimeSegmentedControl: UISegmentedControl = {
-        let segmentedControl = UISegmentedControl(
-            items: DebugTimeOverride.allCases.map(\.title)
-        )
-        segmentedControl.selectedSegmentIndex = DebugTimeOverride.automatic.rawValue
-        segmentedControl.addTarget(
-            self,
-            action: #selector(handleDebugTimeChanged),
-            for: .valueChanged
-        )
-        return segmentedControl
-    }()
-
-    private lazy var debugRainSwitch: UISwitch = {
-        let rainSwitch = UISwitch()
-        rainSwitch.addTarget(
-            self,
-            action: #selector(handleDebugRainChanged),
-            for: .valueChanged
-        )
-        return rainSwitch
-    }()
-
-    private lazy var debugControlsView: UIView = {
-        let containerView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
-        containerView.layer.cornerRadius = 20
-        containerView.layer.cornerCurve = .continuous
-        containerView.clipsToBounds = true
-
-        let rainLabel = AppTextStyle.label(
-            style: UIFont.systemFont(ofSize: 13, weight: .semibold),
-            color: AppColors.textPrimary
-        )
-        rainLabel.text = "Дождь"
-
-        let rainStackView = UIStackView(arrangedSubviews: [rainLabel, debugRainSwitch])
-        rainStackView.axis = .horizontal
-        rainStackView.spacing = 8
-        rainStackView.alignment = .center
-
-        let controlsStackView = UIStackView(arrangedSubviews: [
-            debugTimeSegmentedControl,
-            rainStackView
-        ])
-        controlsStackView.axis = .horizontal
-        controlsStackView.spacing = 10
-        controlsStackView.alignment = .center
-
-        containerView.contentView.addSubview(controlsStackView)
-        controlsStackView.snp.makeConstraints { make in
-            make.edges.equalToSuperview().inset(UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10))
-        }
-
-        return containerView
-    }()
-    #endif
 
     // MARK: - ViewModel
 
@@ -165,11 +79,6 @@ final class MainViewController: UIViewController {
     private var hasLoadedContent = false
     private var hasPlayedInitialSectionAnimation = false
     private var statusBannerHideWorkItem: DispatchWorkItem?
-    #if DEBUG_WEATHER_THEME_CONTROLS
-    private var latestLoadedModel: MainWeatherUIModel?
-    private var debugTimeOverride: DebugTimeOverride = .automatic
-    private var debugForcesRain = false
-    #endif
 
     // MARK: - Init
 
@@ -275,10 +184,6 @@ final class MainViewController: UIViewController {
         errorView.onRetry = { [weak self] in
             self?.viewModel.viewDidLoad()
         }
-
-        #if DEBUG_WEATHER_THEME_CONTROLS
-        setupDebugControls()
-        #endif
     }
 
     private func setupNavigation() {
@@ -311,15 +216,15 @@ final class MainViewController: UIViewController {
             }
             scrollView.isHidden  = false
             hasLoadedContent = true
-            #if DEBUG_WEATHER_THEME_CONTROLS
-            latestLoadedModel = model
-            #endif
             refreshControl.endRefreshing()
 
             let theme = effectiveTheme(for: model)
             applyWeatherTheme(timeOfDay: theme.timeOfDay, isRaining: theme.isRaining)
             
             updateUI(with: model)
+            if model.isStale {
+                showTransientStatus("Показаны сохранённые данные")
+            }
             if shouldAnimateInitialSections {
                 hasPlayedInitialSectionAnimation = true
                 animateInitialSections()
@@ -386,14 +291,7 @@ final class MainViewController: UIViewController {
     }
 
     private func effectiveTheme(for model: MainWeatherUIModel) -> (timeOfDay: TimeOfDay, isRaining: Bool) {
-        #if DEBUG_WEATHER_THEME_CONTROLS
-        (
-            debugTimeOverride.timeOfDay ?? model.timeOfDay,
-            debugForcesRain || model.isRaining
-        )
-        #else
         (model.timeOfDay, model.isRaining)
-        #endif
     }
 
     private func updateGradientIfNeeded(timeOfDay: TimeOfDay, isRaining: Bool) {
@@ -414,7 +312,9 @@ final class MainViewController: UIViewController {
     private func showTransientStatus(_ message: String) {
         statusBannerHideWorkItem?.cancel()
         statusBannerLabel.text = message
+        statusBannerLabel.accessibilityLabel = message
         statusBannerLabel.isHidden = false
+        UIAccessibility.post(notification: .announcement, argument: message)
 
         UIView.animate(withDuration: 0.22) {
             self.statusBannerLabel.alpha = 1
@@ -432,33 +332,4 @@ final class MainViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: hideWorkItem)
     }
 
-    #if DEBUG_WEATHER_THEME_CONTROLS
-    private func setupDebugControls() {
-        view.addSubview(debugControlsView)
-        debugControlsView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(12)
-            make.bottom.equalTo(view.safeAreaLayoutGuide).inset(10)
-        }
-
-        scrollView.contentInset.bottom += 64
-        scrollView.verticalScrollIndicatorInsets.bottom += 64
-    }
-
-    @objc private func handleDebugTimeChanged() {
-        let selectedIndex = debugTimeSegmentedControl.selectedSegmentIndex
-        debugTimeOverride = DebugTimeOverride(rawValue: selectedIndex) ?? .automatic
-        reapplyDebugThemeIfPossible()
-    }
-
-    @objc private func handleDebugRainChanged() {
-        debugForcesRain = debugRainSwitch.isOn
-        reapplyDebugThemeIfPossible()
-    }
-
-    private func reapplyDebugThemeIfPossible() {
-        guard let latestLoadedModel else { return }
-        let theme = effectiveTheme(for: latestLoadedModel)
-        applyWeatherTheme(timeOfDay: theme.timeOfDay, isRaining: theme.isRaining)
-    }
-    #endif
 }

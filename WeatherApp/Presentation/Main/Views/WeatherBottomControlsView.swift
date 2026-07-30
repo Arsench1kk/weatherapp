@@ -31,6 +31,7 @@ final class WeatherBottomControlsView: UIView {
         mapButton.isEnabled = isEnabled
         mapButton.alpha = isEnabled ? 1 : 0.34
         mapButton.accessibilityTraits = isEnabled ? [.button] : [.button, .notEnabled]
+        mapButton.accessibilityValue = isEnabled ? nil : "Недоступно"
     }
 
     private func setupUI() {
@@ -65,8 +66,11 @@ final class WeatherBottomControlsView: UIView {
         listButton.addTarget(self, action: #selector(handleListTap), for: .touchUpInside)
 
         mapButton.accessibilityLabel = "Карта"
+        mapButton.accessibilityHint = "Открывает карту погоды"
         pagerButton.accessibilityLabel = "Сохранённые города"
+        pagerButton.accessibilityHint = "Показывает текущий город в списке"
         listButton.accessibilityLabel = "Список городов"
+        listButton.accessibilityHint = "Открывает список сохранённых городов"
     }
 
     @objc private func handleMapTap() {
@@ -135,6 +139,7 @@ private class GlassControlButton: UIButton {
         materialView.isUserInteractionEnabled = false
         insertSubview(materialView, at: 0)
         insertSubview(overlayView, aboveSubview: materialView)
+        isAccessibilityElement = true
     }
 }
 
@@ -199,7 +204,7 @@ private final class GlassPagerButton: GlassControlButton {
         applyActiveIndicator()
         invalidateIntrinsicContentSize()
         setNeedsLayout()
-        accessibilityValue = "\(safeCurrentPage + 1) из \(safeTotalPages)"
+        accessibilityValue = makeAccessibilityValue(currentPage: safeCurrentPage, totalPages: safeTotalPages)
     }
 
     override var intrinsicContentSize: CGSize {
@@ -235,6 +240,9 @@ private final class GlassPagerButton: GlassControlButton {
         locationImageView.snp.makeConstraints { make in
             make.size.equalTo(Metrics.locationSize)
         }
+        locationImageView.isAccessibilityElement = false
+        indicatorScrollView.isAccessibilityElement = false
+        indicatorStackView.isAccessibilityElement = false
     }
 
     private func rebuildDotsIfNeeded(savedCityCount: Int) {
@@ -248,6 +256,7 @@ private final class GlassPagerButton: GlassControlButton {
         dotViews = (0..<savedCityCount).map { _ in
             let dotView = UIView()
             dotView.layer.cornerRadius = Metrics.dotSize / 2
+            dotView.isAccessibilityElement = false
             dotView.snp.makeConstraints { make in
                 make.size.equalTo(Metrics.dotSize)
             }
@@ -291,6 +300,14 @@ private final class GlassPagerButton: GlassControlButton {
         guard let activeView else { return }
         let targetFrame = activeView.convert(activeView.bounds, to: indicatorScrollView)
         indicatorScrollView.scrollRectToVisible(targetFrame.insetBy(dx: -Metrics.itemSpacing, dy: 0), animated: false)
+    }
+
+    private func makeAccessibilityValue(currentPage: Int, totalPages: Int) -> String {
+        let pageDescription = "\(currentPage + 1) из \(totalPages)"
+        if currentPage == 0 {
+            return "Текущее местоположение, \(pageDescription)"
+        }
+        return "Сохранённый город \(currentPage), \(pageDescription)"
     }
 }
 

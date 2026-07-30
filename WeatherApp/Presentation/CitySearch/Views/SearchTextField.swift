@@ -15,16 +15,18 @@ final class SearchTextField: UIView {
 
     private lazy var textField: UITextField = {
         let textField = UITextField()
-        textField.placeholder = "Search for a city or airport"
+        textField.placeholder = "Поиск города или аэропорта"
         textField.textColor = AppColors.textPrimary
         textField.tintColor = AppColors.textPrimary
         textField.font = .systemFont(ofSize: 18, weight: .regular)
         textField.autocorrectionType = .no
         textField.returnKeyType = .search
         textField.attributedPlaceholder = NSAttributedString(
-            string: "Search for a city or airport",
+            string: "Поиск города или аэропорта",
             attributes: [.foregroundColor: AppColors.textPrimary.withAlphaComponent(0.58)]
         )
+        textField.accessibilityLabel = "Поиск города или аэропорта"
+        textField.accessibilityHint = "Введите название города или аэропорта"
         textField.addTarget(self, action: #selector(handleTextChanged), for: .editingChanged)
         return textField
     }()
@@ -34,6 +36,8 @@ final class SearchTextField: UIView {
         button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
         button.tintColor = AppColors.textPrimary.withAlphaComponent(0.45)
         button.isHidden = true
+        button.accessibilityLabel = "Очистить поиск"
+        button.accessibilityHint = "Удаляет текст поиска"
         button.addTarget(self, action: #selector(handleClear), for: .touchUpInside)
         return button
     }()
@@ -71,6 +75,7 @@ final class SearchTextField: UIView {
             make.centerY.equalToSuperview()
             make.size.equalTo(23)
         }
+        searchImageView.isAccessibilityElement = false
 
         clearButton.snp.makeConstraints { make in
             make.trailing.equalToSuperview().inset(15)
@@ -88,12 +93,14 @@ final class SearchTextField: UIView {
     @objc private func handleTextChanged() {
         let text = textField.text ?? ""
         clearButton.isHidden = text.isEmpty
+        textField.accessibilityValue = text.isEmpty ? "Пусто" : text
         onTextChanged?(text)
     }
 
     @objc private func handleClear() {
         textField.text = ""
         clearButton.isHidden = true
+        textField.accessibilityValue = "Пусто"
         onClear?()
     }
 }

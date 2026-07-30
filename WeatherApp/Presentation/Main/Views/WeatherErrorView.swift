@@ -29,6 +29,8 @@ final class WeatherErrorView: UIView {
         button.backgroundColor = AppColors.weatherErrorButtonBackground
         button.layer.cornerRadius = 12
         button.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
+        button.accessibilityLabel = "Повторить загрузку"
+        button.accessibilityHint = "Повторяет запрос погоды"
         button.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
         return button
     }()
@@ -50,12 +52,15 @@ final class WeatherErrorView: UIView {
             make.height.equalTo(48)
             make.width.greaterThanOrEqualTo(140)
         }
+        iconLabel.isAccessibilityElement = false
+        messageLabel.accessibilityTraits = [.staticText]
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(with message: String) {
         messageLabel.text = message
+        messageLabel.accessibilityLabel = "Ошибка. \(message)"
     }
 
     @objc private func retryTapped() {

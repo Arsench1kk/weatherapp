@@ -48,7 +48,7 @@ final class CitySearchViewController: UIViewController {
         button.layer.cornerCurve = .continuous
         button.layer.borderWidth = 1.0
         button.layer.borderColor = AppColors.citySearchMoreButtonBorder.cgColor
-        button.accessibilityLabel = "Close"
+        button.accessibilityLabel = "Закрыть"
         button.addTarget(self, action: #selector(handleCloseTap), for: .touchUpInside)
         return button
     }()
@@ -122,7 +122,7 @@ final class CitySearchViewController: UIViewController {
 
     private func setupUI() {
         view.backgroundColor = .clear
-        titleLabel.text = "Weather"
+        titleLabel.text = "Погода"
         titleLabel.adjustsFontSizeToFitWidth = true
         titleLabel.minimumScaleFactor = 0.82
 
@@ -266,7 +266,7 @@ final class CitySearchViewController: UIViewController {
             color: AppColors.textPrimary.withAlphaComponent(0.48),
             alignment: .center
         )
-        label.text = "Learn more about weather data and map data"
+        label.text = "Подробнее о данных погоды и карты"
         label.numberOfLines = 2
 
         containerView.addSubview(label)
@@ -416,7 +416,7 @@ extension CitySearchViewController: UITableViewDelegate {
             return nil
         case .searchResults:
             guard case .emptyQuery = state.resultsState else {
-                return makeSectionHeader(title: "Search Results")
+                return makeSectionHeader(title: "Результаты поиска")
             }
             return nil
         }

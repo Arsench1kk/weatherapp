@@ -11,28 +11,28 @@ enum DebugWeatherTheme: String {
 
 enum DebugWeatherFixtures {
 
-    static let defaultLocationName = "Debug Location"
+    static let defaultLocationName = "Отладочная локация"
 
     static let almaty = SavedCity(
         id: "debug-city-almaty",
-        name: "Almaty",
-        subtitle: "Kazakhstan",
+        name: "Алматы",
+        subtitle: "Казахстан",
         latitude: 43.2389,
         longitude: 76.8897
     )
 
     static let astana = SavedCity(
         id: "debug-city-astana",
-        name: "Astana",
-        subtitle: "Kazakhstan",
+        name: "Астана",
+        subtitle: "Казахстан",
         latitude: 51.1694,
         longitude: 71.4491
     )
 
     static let tokyo = SavedCity(
         id: "debug-city-tokyo",
-        name: "Tokyo",
-        subtitle: "Japan",
+        name: "Токио",
+        subtitle: "Япония",
         latitude: 35.6762,
         longitude: 139.6503
     )

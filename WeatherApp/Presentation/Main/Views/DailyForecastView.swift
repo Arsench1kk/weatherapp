@@ -34,6 +34,7 @@ final class DailyForecastView: UIView {
         stackView.axis = .horizontal
         stackView.spacing = 4
         stackView.alignment = .center
+        imageView.isAccessibilityElement = false
         return stackView
     }()
 
@@ -175,6 +176,7 @@ private final class DailyForecastRow: UIView {
             make.width.greaterThanOrEqualTo(DailyForecastLayout.minimumDayWidth)
         }
         iconView.snp.makeConstraints { $0.size.equalTo(DailyForecastLayout.iconSize) }
+        iconView.isAccessibilityElement = false
         minTempLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.temperatureWidth) }
         maxTempLabel.snp.makeConstraints { $0.width.equalTo(DailyForecastLayout.temperatureWidth) }
         rangeBarView.snp.makeConstraints {
@@ -199,6 +201,7 @@ private final class DailyForecastRow: UIView {
             ]))
 
         isAccessibilityElement = true
+        accessibilityTraits = [.staticText]
         accessibilityLabel = "\(model.dayName), \(model.conditionDescription), минимум \(model.minTemperatureText), максимум \(model.maxTemperatureText)."
     }
 }

@@ -31,11 +31,15 @@ final class CitySearchMessageCell: UITableViewCell {
         super.prepareForReuse()
         activityIndicatorView.stopAnimating()
         activityIndicatorView.isHidden = true
+        accessibilityLabel = nil
+        accessibilityValue = nil
     }
 
     func configure(message: String, showsLoading: Bool = false) {
         messageLabel.text = message
         activityIndicatorView.isHidden = !showsLoading
+        accessibilityLabel = message
+        accessibilityValue = showsLoading ? "Загрузка" : nil
 
         if showsLoading {
             activityIndicatorView.startAnimating()
@@ -48,6 +52,10 @@ final class CitySearchMessageCell: UITableViewCell {
         backgroundColor = .clear
         contentView.backgroundColor = .clear
         selectionStyle = .none
+        isAccessibilityElement = true
+        accessibilityTraits = [.staticText]
+        contentView.isAccessibilityElement = false
+        activityIndicatorView.isAccessibilityElement = false
 
         let stackView = UIStackView(arrangedSubviews: [activityIndicatorView, messageLabel])
         stackView.axis = .horizontal
