@@ -3,7 +3,7 @@ import Foundation
 final class CitySearchViewModel {
 
     var onStateChanged: ((CitySearchState) -> Void)?
-    var onCitySelected: ((CitySelection) -> Void)?
+    var onSelectionRequested: ((CitySelection) -> Void)?
 
     private let savedCitiesStore: SavedCitiesStoreProtocol
     private let citySearchClient: CitySearchClientProtocol
@@ -94,12 +94,12 @@ final class CitySearchViewModel {
         let preview = cityPreviews[index]
 
         if preview.isCurrentLocation {
-            onCitySelected?(.currentLocation)
+            onSelectionRequested?(.currentLocation)
             return
         }
 
         guard let city = preview.city else { return }
-        onCitySelected?(.savedCity(city))
+        onSelectionRequested?(.savedCity(city))
     }
 
     func canDeleteCity(at index: Int) -> Bool {
@@ -141,7 +141,7 @@ final class CitySearchViewModel {
                 self.clearSearch()
                 self.reloadSavedCities()
                 self.loadWeatherPreviews()
-                self.onCitySelected?(.savedCity(selectedCity))
+                self.onSelectionRequested?(.savedCity(selectedCity))
             } catch {
                 self.searchResultsState = .error("Не удалось получить координаты города")
                 self.emitState()

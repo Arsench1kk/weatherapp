@@ -4,7 +4,7 @@ import MapKit
 final class MapKitCitySearchClient: NSObject, CitySearchClientProtocol {
 
     private struct SearchRequest {
-        let id: UUID
+        let token: UUID
         let query: String
         let continuation: CheckedContinuation<[CitySearchCompletionModel], Error>
     }
@@ -22,16 +22,24 @@ final class MapKitCitySearchClient: NSObject, CitySearchClientProtocol {
     func searchCompletions(for query: String) async throws -> [CitySearchCompletionModel] {
         try Task.checkCancellation()
 
-        return try await withCheckedThrowingContinuation { continuation in
-            finishCurrentRequest(with: .failure(CancellationError()))
-            completionCache.removeAll()
+        let token = UUID()
 
-            currentRequest = SearchRequest(
-                id: UUID(),
-                query: query,
-                continuation: continuation
-            )
-            completer.queryFragment = query
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                cancelCurrentRequest()
+                completionCache.removeAll()
+
+                currentRequest = SearchRequest(
+                    token: token,
+                    query: query,
+                    continuation: continuation
+                )
+                completer.queryFragment = query
+            }
+        } onCancel: {
+            Task { @MainActor [weak self, token] in
+                self?.cancelRequest(token: token)
+            }
         }
     }
 
@@ -57,9 +65,20 @@ final class MapKitCitySearchClient: NSObject, CitySearchClientProtocol {
     }
 
     func clear() {
-        finishCurrentRequest(with: .failure(CancellationError()))
+        cancelCurrentRequest()
         completionCache.removeAll()
         completer.queryFragment = ""
+    }
+
+    private func cancelCurrentRequest() {
+        guard let request = currentRequest else { return }
+        currentRequest = nil
+        request.continuation.resume(throwing: CancellationError())
+    }
+
+    private func cancelRequest(token: UUID) {
+        guard currentRequest?.token == token else { return }
+        cancelCurrentRequest()
     }
 
     private func finishCurrentRequest(with result: Result<[CitySearchCompletionModel], Error>) {
@@ -96,7 +115,10 @@ final class MapKitCitySearchClient: NSObject, CitySearchClientProtocol {
 extension MapKitCitySearchClient: MKLocalSearchCompleterDelegate {
 
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        guard currentRequest != nil else { return }
+        guard let request = currentRequest,
+              completer.queryFragment == request.query else {
+            return
+        }
 
         let completions = completer.results.enumerated().map { index, completion in
             let model = CitySearchCompletionModel(
@@ -112,6 +134,11 @@ extension MapKitCitySearchClient: MKLocalSearchCompleterDelegate {
     }
 
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        guard let request = currentRequest,
+              completer.queryFragment == request.query else {
+            return
+        }
+
         finishCurrentRequest(with: .failure(error))
     }
 }

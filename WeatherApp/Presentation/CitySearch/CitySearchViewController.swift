@@ -197,7 +197,7 @@ final class CitySearchViewController: UIViewController {
             self?.tableView.reloadData()
         }
 
-        viewModel.onCitySelected = { [weak self] selection in
+        viewModel.onSelectionRequested = { [weak self] selection in
             self?.onCitySelection?(selection)
         }
     }
